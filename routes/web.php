@@ -1,0 +1,107 @@
+<?php
+
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Public\CarController;
+use Illuminate\Support\Facades\Route;
+
+// Public Routes
+Route::get('/', function () {
+    return view('public.home');
+})->name('home');
+
+Route::get('/cars', [CarController::class, 'index'])->name('cars.index');
+Route::get('/cars/{id}', [CarController::class, 'show'])->name('cars.show');
+
+Route::get('/about', function () {
+    return view('public.about');
+})->name('about');
+
+Route::get('/contact', function () {
+    return view('public.contact');
+})->name('contact');
+
+// Auth Routes
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+// Admin Routes
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('dashboard');
+    
+    // Cars
+    Route::get('/cars', [\App\Http\Controllers\Admin\CarController::class, 'index'])->name('cars.index');
+    Route::get('/cars/create', [\App\Http\Controllers\Admin\CarController::class, 'create'])->name('cars.create');
+    Route::post('/cars', [\App\Http\Controllers\Admin\CarController::class, 'store'])->name('cars.store');
+    Route::get('/cars/{id}', [\App\Http\Controllers\Admin\CarController::class, 'show'])->name('cars.show');
+    Route::get('/cars/{id}/edit', [\App\Http\Controllers\Admin\CarController::class, 'edit'])->name('cars.edit');
+    Route::put('/cars/{id}', [\App\Http\Controllers\Admin\CarController::class, 'update'])->name('cars.update');
+    Route::delete('/cars/{id}', [\App\Http\Controllers\Admin\CarController::class, 'destroy'])->name('cars.destroy');
+    Route::post('/cars/{id}/toggle-status', [\App\Http\Controllers\Admin\CarController::class, 'toggleStatus'])->name('cars.toggleStatus');
+    
+    // Bookings
+    Route::get('/bookings', [\App\Http\Controllers\Admin\BookingController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/{id}', [\App\Http\Controllers\Admin\BookingController::class, 'show'])->name('bookings.show');
+    Route::post('/bookings/{id}/update-status', [\App\Http\Controllers\Admin\BookingController::class, 'updateStatus'])->name('bookings.updateStatus');
+    Route::post('/bookings/{id}/assign-driver', [\App\Http\Controllers\Admin\BookingController::class, 'assignDriver'])->name('bookings.assignDriver');
+    Route::post('/bookings/{id}/verify-payment', [\App\Http\Controllers\Admin\BookingController::class, 'verifyPayment'])->name('bookings.verifyPayment');
+    Route::post('/bookings/{id}/reject-payment', [\App\Http\Controllers\Admin\BookingController::class, 'rejectPayment'])->name('bookings.rejectPayment');
+    
+    // Users
+    Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('users.create');
+    Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
+    Route::get('/users/{id}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
+    
+    // Reports
+    Route::get('/reports', function () {
+        return view('admin.reports');
+    })->name('reports');
+});
+
+// Customer Routes
+Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('customer.dashboard');
+    })->name('dashboard');
+    
+    // Bookings
+    Route::get('/bookings', [\App\Http\Controllers\Customer\BookingController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/create', [\App\Http\Controllers\Customer\BookingController::class, 'create'])->name('bookings.create');
+    Route::post('/bookings', [\App\Http\Controllers\Customer\BookingController::class, 'store'])->name('bookings.store');
+    Route::get('/bookings/{id}', [\App\Http\Controllers\Customer\BookingController::class, 'show'])->name('bookings.show');
+    Route::post('/bookings/{id}/upload-payment', [\App\Http\Controllers\Customer\BookingController::class, 'uploadPayment'])->name('bookings.uploadPayment');
+    Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\Customer\BookingController::class, 'cancel'])->name('bookings.cancel');
+    
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
+    Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.deleteAvatar');
+});
+
+// Driver Routes
+Route::middleware(['auth', 'role:driver'])->prefix('driver')->name('driver.')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('driver.dashboard');
+    })->name('dashboard');
+    
+    // Tasks
+    Route::get('/tasks', [\App\Http\Controllers\Driver\TaskController::class, 'index'])->name('tasks.index');
+    Route::get('/tasks/history', [\App\Http\Controllers\Driver\TaskController::class, 'history'])->name('tasks.history');
+    Route::get('/tasks/{id}', [\App\Http\Controllers\Driver\TaskController::class, 'show'])->name('tasks.show');
+    Route::post('/tasks/{id}/start', [\App\Http\Controllers\Driver\TaskController::class, 'startTask'])->name('tasks.start');
+    Route::post('/tasks/{id}/complete', [\App\Http\Controllers\Driver\TaskController::class, 'completeTask'])->name('tasks.complete');
+});

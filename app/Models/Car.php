@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+#[Fillable(['name', 'brand', 'type', 'year', 'color', 'plate_number', 'price_per_day', 'status', 'image', 'seats', 'description'])]
+class Car extends Model
+{
+    use HasFactory;
+
+    /**
+     * Get the bookings for the car.
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Check if car is available.
+     */
+    public function isAvailable(): bool
+    {
+        return $this->status === 'available';
+    }
+
+    /**
+     * Check if car is rented.
+     */
+    public function isRented(): bool
+    {
+        return $this->status === 'rented';
+    }
+
+    /**
+     * Check if car is under maintenance.
+     */
+    public function isMaintenance(): bool
+    {
+        return $this->status === 'maintenance';
+    }
+
+    /**
+     * Scope a query to only include available cars.
+     */
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'available');
+    }
+
+    /**
+     * Get the car's image URL.
+     */
+    public function getImageUrlAttribute(): string
+    {
+        return $this->image ? asset('storage/' . $this->image) : asset('images/default-car.png');
+    }
+}

@@ -1,0 +1,147 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+#[Fillable(['user_id', 'car_id', 'driver_id', 'start_date', 'end_date', 'total_days', 'total_price', 'pickup_location', 'dropoff_location', 'status', 'payment_status', 'payment_proof', 'notes'])]
+class Booking extends Model
+{
+    use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     */
+    protected function casts(): array
+    {
+        return [
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'total_price' => 'decimal:2',
+        ];
+    }
+
+    /**
+     * Get the user that owns the booking.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the car that owns the booking.
+     */
+    public function car(): BelongsTo
+    {
+        return $this->belongsTo(Car::class);
+    }
+
+    /**
+     * Get the driver for the booking.
+     */
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    /**
+     * Get the review for the booking.
+     */
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class);
+    }
+
+    /**
+     * Check if booking is pending.
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if booking is confirmed.
+     */
+    public function isConfirmed(): bool
+    {
+        return $this->status === 'confirmed';
+    }
+
+    /**
+     * Check if booking is ongoing.
+     */
+    public function isOngoing(): bool
+    {
+        return $this->status === 'ongoing';
+    }
+
+    /**
+     * Check if booking is completed.
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /**
+     * Check if booking is cancelled.
+     */
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    /**
+     * Check if payment is paid.
+     */
+    public function isPaid(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    /**
+     * Check if payment is unpaid.
+     */
+    public function isUnpaid(): bool
+    {
+        return $this->payment_status === 'unpaid';
+    }
+
+    /**
+     * Scope a query to only include pending bookings.
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    /**
+     * Scope a query to only include confirmed bookings.
+     */
+    public function scopeConfirmed($query)
+    {
+        return $query->where('status', 'confirmed');
+    }
+
+    /**
+     * Scope a query to only include ongoing bookings.
+     */
+    public function scopeOngoing($query)
+    {
+        return $query->where('status', 'ongoing');
+    }
+
+    /**
+     * Get the payment proof URL.
+     */
+    public function getPaymentProofUrlAttribute(): ?string
+    {
+        return $this->payment_proof ? asset('storage/' . $this->payment_proof) : null;
+    }
+}
