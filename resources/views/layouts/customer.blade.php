@@ -15,14 +15,15 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #1a3c5e;
-            --secondary-color: #f5a623;
+            --primary-color: #0f172a;
+            --secondary-color: #e30613;
             --sidebar-width: 260px;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow-x: hidden;
+            background-color: #f8fafc;
         }
         
         .sidebar {
@@ -35,14 +36,16 @@
             padding: 0;
             z-index: 1000;
             overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
         
         .sidebar .brand {
             padding: 1.5rem;
             font-size: 1.3rem;
-            font-weight: bold;
+            font-weight: 800;
             color: white;
-            border-bottom: 1px solid rgba(255,255,255,.1);
+            border-bottom: 1px solid rgba(255,255,255,.05);
+            letter-spacing: 0.5px;
         }
         
         .sidebar-nav {
@@ -50,27 +53,30 @@
         }
         
         .sidebar-nav .nav-link {
-            color: rgba(255,255,255,.8);
-            padding: 0.8rem 1.5rem;
-            border-left: 3px solid transparent;
-            transition: all 0.3s;
+            color: rgba(255,255,255,.7);
+            padding: 0.85rem 1.5rem;
+            border-left: 4px solid transparent;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
         
         .sidebar-nav .nav-link:hover {
             color: white;
-            background: rgba(255,255,255,.1);
+            background: rgba(255, 255, 255, 0.04);
             border-left-color: var(--secondary-color);
         }
         
         .sidebar-nav .nav-link.active {
             color: white;
-            background: rgba(255,255,255,.1);
+            background: rgba(227, 6, 19, 0.08);
             border-left-color: var(--secondary-color);
+            font-weight: 600;
         }
         
         .sidebar-nav .nav-link i {
             width: 25px;
             margin-right: 10px;
+            font-size: 1.1rem;
         }
         
         .main-content {
@@ -80,39 +86,64 @@
         
         .top-navbar {
             background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,.02);
+            border-bottom: 1px solid #f1f5f9;
             padding: 1rem 1.5rem;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .content-wrapper {
             padding: 2rem;
             min-height: calc(100vh - 70px);
-            background: #f8f9fa;
+            background: #f8fafc;
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
         .stat-card {
-            border-radius: 10px;
-            padding: 1.5rem;
+            border-radius: 16px;
+            padding: 1.8rem;
             color: white;
             margin-bottom: 1.5rem;
             position: relative;
             overflow: hidden;
+            border: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.02);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
         }
         
         .stat-card h3 {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 0.4rem;
+            line-height: 1.1;
         }
         
         .stat-card p {
             margin: 0;
-            opacity: 0.9;
+            opacity: 0.85;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .stat-card i {
-            font-size: 3rem;
-            opacity: 0.3;
+            font-size: 3.5rem;
+            opacity: 0.25;
             position: absolute;
             right: 20px;
             top: 50%;
@@ -121,19 +152,23 @@
         
         .card {
             border: none;
-            box-shadow: 0 0 10px rgba(0,0,0,.1);
-            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
         }
         
         .card-header {
             background: white;
-            border-bottom: 1px solid #e9ecef;
-            font-weight: 600;
-            color: var(--primary-color);
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 700;
+            color: #1e293b;
+            padding: 1.2rem 1.5rem;
         }
         
         .badge {
-            padding: 0.5em 0.75em;
+            padding: 0.6em 0.85em;
+            font-weight: 600;
+            border-radius: 30px;
         }
         
         @media (max-width: 768px) {
@@ -150,14 +185,14 @@
             }
         }
         
-        @yield('styles')
     </style>
+    @yield('styles')
 </head>
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="brand">
-            <i class="bi bi-car-front-fill text-warning"></i> Dashboard Saya
+            <i class="bi bi-car-front-fill text-danger"></i> Dashboard Saya
         </div>
         <nav class="sidebar-nav">
             <a href="{{ route('customer.dashboard') }}" class="nav-link {{ request()->routeIs('customer.dashboard') ? 'active' : '' }}">

@@ -28,16 +28,20 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'required|string|max:20',
+            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
             'avatar' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
         ], [
             'name.required' => 'Nama harus diisi',
+            'name.regex' => 'Nama hanya boleh mengandung huruf',
             'email.required' => 'Email harus diisi',
             'email.email' => 'Format email tidak valid',
             'email.unique' => 'Email sudah digunakan',
             'phone.required' => 'Nomor telepon harus diisi',
+            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
+            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
             'avatar.image' => 'File harus berupa gambar',
             'avatar.mimes' => 'Format gambar harus JPEG, JPG, atau PNG',
             'avatar.max' => 'Ukuran gambar maksimal 2MB',
@@ -47,6 +51,7 @@ class ProfileController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
+            'whatsapp_number' => $request->whatsapp_number,
         ];
 
         // Handle avatar upload
@@ -82,12 +87,15 @@ class ProfileController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
         ], [
             'current_password.required' => 'Password saat ini harus diisi',
             'password.required' => 'Password baru harus diisi',
             'password.confirmed' => 'Konfirmasi password tidak cocok',
             'password.min' => 'Password minimal 8 karakter',
+            'password.letters' => 'Password harus mengandung huruf',
+            'password.numbers' => 'Password harus mengandung angka',
+            'password.symbols' => 'Password harus mengandung simbol',
         ]);
 
         $user = Auth::user();
@@ -101,7 +109,7 @@ class ProfileController extends Controller
 
         // Update password
         $user->update([
-            'password' => Hash::make($request->password),
+            'password' => $request->password, // Cast 'hashed' di model otomatis meng-hash password
         ]);
 
         return redirect()->route('customer.profile.edit')

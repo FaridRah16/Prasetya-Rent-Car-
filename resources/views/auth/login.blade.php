@@ -33,7 +33,38 @@
         padding: 0.75rem;
         font-weight: 600;
     }
+    
+    .toggle-password {
+        cursor: pointer;
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 5;
+    }
+    
+    .toggle-password:hover {
+        color: #495057;
+    }
 </style>
+@endsection
+
+@section('scripts')
+<script>
+    function togglePassword(fieldId, icon) {
+        const field = document.getElementById(fieldId);
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            field.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+</script>
 @endsection
 
 @section('content')
@@ -73,14 +104,17 @@
                                     <label for="password" class="form-label">
                                         <i class="bi bi-lock"></i> Password
                                     </label>
-                                    <input type="password" 
-                                           class="form-control @error('password') is-invalid @enderror" 
-                                           id="password" 
-                                           name="password" 
-                                           placeholder="Masukkan password Anda"
-                                           required>
+                                    <div class="position-relative">
+                                        <input type="password" 
+                                               class="form-control @error('password') is-invalid @enderror" 
+                                               id="password" 
+                                               name="password" 
+                                               placeholder="Masukkan password Anda"
+                                               required>
+                                        <i class="bi bi-eye toggle-password" onclick="togglePassword('password', this)"></i>
+                                    </div>
                                     @error('password')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        <div class="invalid-feedback" style="display:block">{{ $message }}</div>
                                     @enderror
                                 </div>
 

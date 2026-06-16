@@ -14,8 +14,10 @@
                             <h5 class="mb-0">Booking #{{ $task->id }}</h5>
                             @if($task->status === 'confirmed')
                                 <span class="badge bg-light text-dark">Menunggu Dimulai</span>
+                            @elseif($task->delivery_proof)
+                                <span class="badge bg-warning text-dark">Menunggu Konfirmasi Admin</span>
                             @else
-                                <span class="badge bg-warning text-dark">Sedang Berlangsung</span>
+                                <span class="badge bg-info text-white">Sedang Berlangsung</span>
                             @endif
                         </div>
                     </div>
@@ -74,16 +76,12 @@
                                         <i class="bi bi-play-circle"></i> Mulai Tugas
                                     </button>
                                 </form>
-                            @elseif($task->status === 'ongoing')
-                                <form method="POST" 
-                                      action="{{ route('driver.tasks.complete', $task->id) }}"
-                                      onsubmit="return confirm('Yakin tugas sudah selesai?')"
-                                      class="flex-fill">
-                                    @csrf
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-check-circle"></i> Selesaikan Tugas
-                                    </button>
-                                </form>
+                            @elseif($task->delivery_proof)
+                                <div class="flex-fill">
+                                    <span class="text-success small">
+                                        <i class="bi bi-check-circle"></i> Bukti pengantaran sudah dikirim
+                                    </span>
+                                </div>
                             @endif
                             <a href="{{ route('driver.tasks.show', $task->id) }}" class="btn btn-outline-primary">
                                 <i class="bi bi-eye"></i> Detail

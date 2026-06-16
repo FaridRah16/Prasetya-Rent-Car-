@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'brand', 'type', 'year', 'color', 'plate_number', 'price_per_day', 'status', 'image', 'seats', 'description'])]
+#[Fillable(['name', 'brand', 'type', 'year', 'color', 'plate_number', 'price_per_day', 'status', 'image', 'gallery', 'seats', 'description'])]
 class Car extends Model
 {
     use HasFactory;
+
+    protected $casts = [
+        'gallery' => 'array',
+    ];
 
     /**
      * Get the bookings for the car.
@@ -58,5 +62,24 @@ class Car extends Model
     public function getImageUrlAttribute(): string
     {
         return $this->image ? asset('storage/' . $this->image) : asset('images/default-car.png');
+    }
+
+    /**
+     * Get the car's gallery image URLs.
+     */
+    public function getGalleryUrlsAttribute(): array
+    {
+        $images = $this->gallery;
+        if (empty($images) || !is_array($images)) {
+            return [
+                $this->image_url,
+                $this->image_url,
+                $this->image_url,
+                $this->image_url,
+            ];
+        }
+        return array_merge([$this->image_url], array_map(function($img) {
+            return asset('storage/' . $img);
+        }, $images));
     }
 }

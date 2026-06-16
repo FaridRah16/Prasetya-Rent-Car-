@@ -152,7 +152,7 @@
                 <div class="card-body">
                     @if($car->image)
                         <div class="mb-3">
-                            <label class="form-label">Foto Saat Ini:</label>
+                            <label class="form-label">Foto Utama Saat Ini:</label>
                             <div>
                                 <img src="{{ asset('storage/' . $car->image) }}" 
                                      alt="{{ $car->name }}" 
@@ -163,7 +163,7 @@
                     @endif
 
                     <div class="mb-3">
-                        <label class="form-label">Upload Foto Baru (Opsional)</label>
+                        <label class="form-label">Upload Foto Utama Baru (Opsional)</label>
                         <input type="file" 
                                class="form-control @error('image') is-invalid @enderror" 
                                name="image" 
@@ -176,9 +176,53 @@
                     </div>
 
                     <!-- Image Preview -->
-                    <div id="imagePreview" style="display: none;">
-                        <label class="form-label">Preview Foto Baru:</label>
+                    <div id="imagePreview" style="display: none; margin-top: 10px;">
+                        <label class="form-label">Preview Foto Utama Baru:</label>
                         <img id="preview" src="#" alt="Preview" style="max-width: 300px; border-radius: 10px;" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-images"></i> Galeri Foto Mobil</h5>
+                </div>
+                <div class="card-body">
+                    @if(!empty($car->gallery) && is_array($car->gallery))
+                        <div class="mb-3">
+                            <label class="form-label">Galeri Foto Saat Ini:</label>
+                            <div class="row g-2">
+                                @foreach($car->gallery as $galleryImg)
+                                    <div class="col-3 text-center">
+                                        <img src="{{ asset('storage/' . $galleryImg) }}" 
+                                             alt="Gallery Preview" 
+                                             style="max-height: 80px; object-fit: contain;" 
+                                             class="img-fluid rounded border">
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <label class="form-label">Upload Galeri Foto Baru (Menimpa galeri saat ini)</label>
+                        <input type="file" 
+                               class="form-control @error('gallery') is-invalid @enderror" 
+                               name="gallery[]" 
+                               accept="image/*"
+                               multiple
+                               onchange="previewGallery(event)">
+                        @error('gallery')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        @error('gallery.*')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Format: JPG, PNG (Max: 2MB per file). Kosongkan jika tidak ingin mengubah galeri.</small>
+                    </div>
+
+                    <!-- Gallery Preview Container -->
+                    <div id="galleryPreview" class="row g-2 mt-2" style="display: none;">
                     </div>
                 </div>
             </div>
@@ -243,6 +287,32 @@
             document.getElementById('imagePreview').style.display = 'block';
         };
         reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function previewGallery(event) {
+        const container = document.getElementById('galleryPreview');
+        container.innerHTML = '';
+        container.style.display = 'flex';
+        
+        if (event.target.files) {
+            Array.from(event.target.files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const col = document.createElement('div');
+                    col.className = 'col-3 text-center';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'img-fluid rounded border';
+                    img.style.maxHeight = '85px';
+                    img.style.objectFit = 'contain';
+                    
+                    col.appendChild(img);
+                    container.appendChild(col);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
     }
 </script>
 @endsection

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Driver;
 use App\Models\Car;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
 {
@@ -15,7 +16,7 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Booking::with(['user', 'car', 'driver.user']);
+        $query = Booking::with(['user', 'car', 'driver']);
 
         // Filter by status
         if ($request->filled('status')) {
@@ -47,7 +48,7 @@ class BookingController extends Controller
      */
     public function show($id)
     {
-        $booking = Booking::with(['user', 'car', 'driver.user'])->findOrFail($id);
+        $booking = Booking::with(['user', 'car', 'driver'])->findOrFail($id);
         $availableDrivers = Driver::where('status', 'available')->with('user')->get();
 
         return view('admin.bookings.show', compact('booking', 'availableDrivers'));
@@ -80,6 +81,14 @@ class BookingController extends Controller
             }
         } elseif ($request->status === 'ongoing' && $oldStatus !== 'ongoing') {
             $booking->car->update(['status' => 'rented']);
+            
+            // Set driver ke 'on_duty' jika ada driver yang ditugaskan
+            if ($booking->driver_id) {
+                $driver = Driver::where('user_id', $booking->driver_id)->first();
+                if ($driver) {
+                    $driver->update(['status' => 'on_duty']);
+                }
+            }
         }
 
         return back()->with('success', 'Status booking berhasil diupdate');
@@ -91,7 +100,7 @@ class BookingController extends Controller
     public function assignDriver(Request $request, $id)
     {
         $request->validate([
-            'driver_id' => 'required|exists:users,id',
+            'driver_id' => 'required|exists:drivers,user_id',
         ]);
 
         $booking = Booking::findOrFail($id);
@@ -104,13 +113,8 @@ class BookingController extends Controller
             }
         }
 
-        // Assign new driver
+        // Assign new driver (status tetap 'available' sampai booking benar-benar dimulai)
         $booking->update(['driver_id' => $request->driver_id]);
-        
-        $newDriver = Driver::where('user_id', $request->driver_id)->first();
-        if ($newDriver) {
-            $newDriver->update(['status' => 'on_duty']);
-        }
 
         return back()->with('success', 'Driver berhasil ditugaskan');
     }
@@ -131,6 +135,10 @@ class BookingController extends Controller
             'status' => 'confirmed', // Auto confirm when payment is verified
         ]);
 
+        // CATATAN: Status mobil dan driver TIDAK diubah di sini.
+        // Mobil tetap 'available' sampai booking berubah ke 'ongoing' (saat admin update status atau driver mulai tugas).
+        // Hal ini mencegah mobil terkunci sebagai 'rented' padahal belum digunakan.
+
         return back()->with('success', 'Pembayaran berhasil diverifikasi dan booking dikonfirmasi');
     }
 
@@ -143,14 +151,12 @@ class BookingController extends Controller
 
         // Delete payment proof file
         if ($booking->payment_proof) {
-            $path = storage_path('app/public/' . $booking->payment_proof);
-            if (file_exists($path)) {
-                unlink($path);
-            }
+            Storage::disk('public')->delete($booking->payment_proof);
         }
 
         $booking->update([
             'payment_proof' => null,
+            'payment_status' => 'unpaid',
         ]);
 
         return back()->with('success', 'Bukti pembayaran ditolak. Customer harus upload ulang');

@@ -4,24 +4,25 @@
 @section('page-title', 'Dashboard Customer')
 
 @section('content')
+
 <div class="row">
     <div class="col-md-4">
         <div class="stat-card position-relative" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h3>0</h3>
+            <h3>{{ $totalBookings }}</h3>
             <p>Total Booking</p>
             <i class="bi bi-calendar-check"></i>
         </div>
     </div>
     <div class="col-md-4">
         <div class="stat-card position-relative" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <h3>0</h3>
+            <h3>{{ $activeBookings }}</h3>
             <p>Booking Aktif</p>
             <i class="bi bi-clock-history"></i>
         </div>
     </div>
     <div class="col-md-4">
         <div class="stat-card position-relative" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <h3>Rp 0</h3>
+            <h3>Rp {{ number_format($totalSpending, 0, ',', '.') }}</h3>
             <p>Total Pengeluaran</p>
             <i class="bi bi-cash"></i>
         </div>

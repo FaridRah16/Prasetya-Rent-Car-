@@ -154,7 +154,7 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">Upload Foto (Opsional)</label>
+                        <label class="form-label">Upload Foto Utama (Opsional)</label>
                         <input type="file" 
                                class="form-control @error('image') is-invalid @enderror" 
                                name="image" 
@@ -167,8 +167,36 @@
                     </div>
 
                     <!-- Image Preview -->
-                    <div id="imagePreview" style="display: none;">
+                    <div id="imagePreview" style="display: none; margin-top: 10px;">
                         <img id="preview" src="#" alt="Preview" style="max-width: 300px; border-radius: 10px;" class="img-fluid">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-images"></i> Galeri Foto Mobil</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Upload Foto Tambahan (Bisa pilih beberapa sekaligus)</label>
+                        <input type="file" 
+                               class="form-control @error('gallery') is-invalid @enderror" 
+                               name="gallery[]" 
+                               accept="image/*"
+                               multiple
+                               onchange="previewGallery(event)">
+                        @error('gallery')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        @error('gallery.*')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Format: JPG, PNG (Max: 2MB per file)</small>
+                    </div>
+
+                    <!-- Gallery Preview Container -->
+                    <div id="galleryPreview" class="row g-2 mt-2" style="display: none;">
                     </div>
                 </div>
             </div>
@@ -227,6 +255,32 @@
             document.getElementById('imagePreview').style.display = 'block';
         };
         reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function previewGallery(event) {
+        const container = document.getElementById('galleryPreview');
+        container.innerHTML = '';
+        container.style.display = 'flex';
+        
+        if (event.target.files) {
+            Array.from(event.target.files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const col = document.createElement('div');
+                    col.className = 'col-3 text-center';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'img-fluid rounded border';
+                    img.style.maxHeight = '85px';
+                    img.style.objectFit = 'contain';
+                    
+                    col.appendChild(img);
+                    container.appendChild(col);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
     }
 </script>
 @endsection

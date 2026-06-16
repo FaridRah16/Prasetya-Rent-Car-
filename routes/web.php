@@ -1,13 +1,21 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
 use App\Http\Controllers\Customer\ProfileController;
+use App\Http\Controllers\Driver\DashboardController as DriverDashboardController;
 use App\Http\Controllers\Public\CarController;
 use Illuminate\Support\Facades\Route;
 
 // Public Routes
 Route::get('/', function () {
-    return view('public.home');
+    $featuredCars = \App\Models\Car::where('status', 'available')
+        ->orderBy('created_at', 'desc')
+        ->take(6)
+        ->get();
+    return view('public.home', compact('featuredCars'));
 })->name('home');
 
 Route::get('/cars', [CarController::class, 'index'])->name('cars.index');
@@ -33,9 +41,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 // Admin Routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     
     // Cars
     Route::get('/cars', [\App\Http\Controllers\Admin\CarController::class, 'index'])->name('cars.index');
@@ -65,16 +71,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
     
     // Reports
-    Route::get('/reports', function () {
-        return view('admin.reports');
-    })->name('reports');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports');
 });
 
 // Customer Routes
 Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('customer.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
     
     // Bookings
     Route::get('/bookings', [\App\Http\Controllers\Customer\BookingController::class, 'index'])->name('bookings.index');
@@ -94,9 +96,7 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
 
 // Driver Routes
 Route::middleware(['auth', 'role:driver'])->prefix('driver')->name('driver.')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('driver.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DriverDashboardController::class, 'index'])->name('dashboard');
     
     // Tasks
     Route::get('/tasks', [\App\Http\Controllers\Driver\TaskController::class, 'index'])->name('tasks.index');

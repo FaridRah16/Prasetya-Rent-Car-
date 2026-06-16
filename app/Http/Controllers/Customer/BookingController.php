@@ -8,6 +8,7 @@ use App\Models\Car;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -76,10 +77,28 @@ class BookingController extends Controller
             return back()->with('error', 'Mobil tidak tersedia untuk disewa');
         }
 
+        // Cek apakah ada booking yang tumpang-tindih untuk mobil yang sama di tanggal tersebut
+        $overlappingBooking = Booking::where('car_id', $request->car_id)
+            ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+            ->where(function($query) use ($request) {
+                $query->whereBetween('start_date', [$request->start_date, $request->end_date])
+                    ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
+                    ->orWhere(function($q) use ($request) {
+                        $q->where('start_date', '<=', $request->start_date)
+                          ->where('end_date', '>=', $request->end_date);
+                    });
+            })
+            ->exists();
+
+        if ($overlappingBooking) {
+            return back()->with('error', 'Mobil sudah di-booking pada tanggal yang Anda pilih. Silakan pilih tanggal lain.')
+                ->withInput();
+        }
+
         // Calculate total days and price
         $startDate = Carbon::parse($request->start_date);
         $endDate = Carbon::parse($request->end_date);
-        $totalDays = $startDate->diffInDays($endDate) + 1; // Include the start day
+        $totalDays = (int) $startDate->diffInDays($endDate) + 1; // Include the start day
         $totalPrice = $totalDays * $car->price_per_day;
 
         // Create booking
@@ -98,16 +117,7 @@ class BookingController extends Controller
             'notes' => $request->notes,
         ]);
 
-        // Update car status
-        $car->update(['status' => 'rented']);
-
-        // Update driver status if driver is selected
-        if ($request->driver_id) {
-            $driver = Driver::where('user_id', $request->driver_id)->first();
-            if ($driver) {
-                $driver->update(['status' => 'on_duty']);
-            }
-        }
+        // Note: Car and driver status will be updated by admin after payment verification
 
         return redirect()->route('customer.bookings.show', $booking->id)
             ->with('success', 'Booking berhasil dibuat! Silakan lakukan pembayaran dan upload bukti bayar.');
@@ -119,7 +129,7 @@ class BookingController extends Controller
     public function show($id)
     {
         $booking = Booking::where('user_id', Auth::id())
-            ->with(['car', 'driver.user'])
+            ->with(['car', 'driver'])
             ->findOrFail($id);
 
         return view('customer.bookings.show', compact('booking'));
@@ -144,15 +154,12 @@ class BookingController extends Controller
         if ($request->hasFile('payment_proof')) {
             // Delete old payment proof if exists
             if ($booking->payment_proof) {
-                $oldPath = storage_path('app/public/' . $booking->payment_proof);
-                if (file_exists($oldPath)) {
-                    unlink($oldPath);
-                }
+                Storage::disk('public')->delete($booking->payment_proof);
             }
 
             // Store new payment proof
             $file = $request->file('payment_proof');
-            $filename = 'payment_' . $booking->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'payment_' . $booking->id . '_' . time() . '.' . $file->extension();
             $path = $file->storeAs('payments', $filename, 'public');
 
             // Update booking
@@ -178,10 +185,15 @@ class BookingController extends Controller
             return back()->with('error', 'Hanya booking dengan status pending yang bisa dibatalkan');
         }
 
+        // Cegah pembatalan jika mobil sudah berstatus 'rented' (sedang digunakan)
+        if ($booking->car->status === 'rented') {
+            return back()->with('error', 'Tidak dapat membatalkan booking karena mobil sudah dalam proses penggunaan');
+        }
+
         // Update booking status
         $booking->update(['status' => 'cancelled']);
 
-        // Update car status back to available
+        // Update car status back to available (hanya jika mobil belum rented)
         $booking->car->update(['status' => 'available']);
 
         // Update driver status if there's a driver

@@ -60,6 +60,8 @@ class CarController extends Controller
             'status' => 'required|in:available,rented,maintenance',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'image|mimes:jpeg,png,jpg|max:2048',
         ], [
             'name.required' => 'Nama mobil harus diisi',
             'brand.required' => 'Brand mobil harus diisi',
@@ -79,16 +81,31 @@ class CarController extends Controller
             'image.image' => 'File harus berupa gambar',
             'image.mimes' => 'Format gambar harus jpeg, png, atau jpg',
             'image.max' => 'Ukuran gambar maksimal 2MB',
+            'gallery.array' => 'Format galeri harus berupa array',
+            'gallery.*.image' => 'File galeri harus berupa gambar',
+            'gallery.*.mimes' => 'Format gambar galeri harus jpeg, png, atau jpg',
+            'gallery.*.max' => 'Ukuran gambar galeri maksimal 2MB',
         ]);
 
-        $data = $request->except('image');
+        $data = $request->except(['image', 'gallery']);
 
         // Handle image upload
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $filename = 'car_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'car_' . time() . '.' . $file->extension();
             $path = $file->storeAs('cars', $filename, 'public');
             $data['image'] = $path;
+        }
+
+        // Handle gallery upload
+        if ($request->hasFile('gallery')) {
+            $galleryPaths = [];
+            foreach ($request->file('gallery') as $index => $file) {
+                $filename = 'car_gallery_' . time() . '_' . $index . '.' . $file->extension();
+                $path = $file->storeAs('cars/gallery', $filename, 'public');
+                $galleryPaths[] = $path;
+            }
+            $data['gallery'] = $galleryPaths;
         }
 
         Car::create($data);
@@ -134,6 +151,8 @@ class CarController extends Controller
             'status' => 'required|in:available,rented,maintenance',
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'gallery' => 'nullable|array',
+            'gallery.*' => 'image|mimes:jpeg,png,jpg|max:2048',
         ], [
             'name.required' => 'Nama mobil harus diisi',
             'brand.required' => 'Brand mobil harus diisi',
@@ -147,9 +166,13 @@ class CarController extends Controller
             'status.required' => 'Status mobil harus dipilih',
             'image.image' => 'File harus berupa gambar',
             'image.max' => 'Ukuran gambar maksimal 2MB',
+            'gallery.array' => 'Format galeri harus berupa array',
+            'gallery.*.image' => 'File galeri harus berupa gambar',
+            'gallery.*.mimes' => 'Format gambar galeri harus jpeg, png, atau jpg',
+            'gallery.*.max' => 'Ukuran gambar galeri maksimal 2MB',
         ]);
 
-        $data = $request->except('image');
+        $data = $request->except(['image', 'gallery']);
 
         // Handle image upload
         if ($request->hasFile('image')) {
@@ -159,9 +182,27 @@ class CarController extends Controller
             }
 
             $file = $request->file('image');
-            $filename = 'car_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'car_' . time() . '.' . $file->extension();
             $path = $file->storeAs('cars', $filename, 'public');
             $data['image'] = $path;
+        }
+
+        // Handle gallery upload
+        if ($request->hasFile('gallery')) {
+            // Delete old gallery images
+            if (!empty($car->gallery) && is_array($car->gallery)) {
+                foreach ($car->gallery as $oldImg) {
+                    Storage::disk('public')->delete($oldImg);
+                }
+            }
+
+            $galleryPaths = [];
+            foreach ($request->file('gallery') as $index => $file) {
+                $filename = 'car_gallery_' . time() . '_' . $index . '.' . $file->extension();
+                $path = $file->storeAs('cars/gallery', $filename, 'public');
+                $galleryPaths[] = $path;
+            }
+            $data['gallery'] = $galleryPaths;
         }
 
         $car->update($data);
@@ -189,6 +230,13 @@ class CarController extends Controller
         // Delete image if exists
         if ($car->image) {
             Storage::disk('public')->delete($car->image);
+        }
+
+        // Delete gallery images if exist
+        if (!empty($car->gallery) && is_array($car->gallery)) {
+            foreach ($car->gallery as $galleryImg) {
+                Storage::disk('public')->delete($galleryImg);
+            }
         }
 
         $car->delete();

@@ -28,11 +28,4 @@ class Review extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Scope a query to order by latest.
-     */
-    public function scopeLatest($query)
-    {
-        return $query->orderBy('created_at', 'desc');
-    }
 }

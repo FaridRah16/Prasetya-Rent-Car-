@@ -94,6 +94,10 @@
                                         <span class="badge bg-info">
                                             <i class="bi bi-check-circle"></i> Dikonfirmasi
                                         </span>
+                                    @elseif($booking->status === 'ongoing' && $booking->delivery_proof)
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-hourglass-split"></i> Menunggu Selesai
+                                        </span>
                                     @elseif($booking->status === 'ongoing')
                                         <span class="badge bg-primary">
                                             <i class="bi bi-car-front"></i> Berlangsung

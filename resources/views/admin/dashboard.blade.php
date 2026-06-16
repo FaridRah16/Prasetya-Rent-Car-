@@ -4,18 +4,6 @@
 @section('page-title', 'Dashboard Admin')
 
 @section('content')
-@php
-    $totalCars = \App\Models\Car::count();
-    $availableCars = \App\Models\Car::where('status', 'available')->count();
-    $todayBookings = \App\Models\Booking::whereDate('created_at', today())->count();
-    $pendingBookings = \App\Models\Booking::where('status', 'pending')->count();
-    $totalUsers = \App\Models\User::count();
-    $totalCustomers = \App\Models\User::where('role', 'customer')->count();
-    $monthRevenue = \App\Models\Booking::whereMonth('created_at', date('m'))
-        ->whereYear('created_at', date('Y'))
-        ->where('payment_status', 'paid')
-        ->sum('total_price');
-@endphp
 
 <div class="row">
     <div class="col-xl-3 col-md-6">
@@ -59,13 +47,6 @@
                 </a>
             </div>
             <div class="card-body">
-                @php
-                    $recentBookings = \App\Models\Booking::with(['user', 'car'])
-                        ->orderBy('created_at', 'desc')
-                        ->take(5)
-                        ->get();
-                @endphp
-
                 @if($recentBookings->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
@@ -140,10 +121,6 @@
                 <h5 class="mb-0">Status Mobil</h5>
             </div>
             <div class="card-body">
-                @php
-                    $rentedCars = \App\Models\Car::where('status', 'rented')->count();
-                    $maintenanceCars = \App\Models\Car::where('status', 'maintenance')->count();
-                @endphp
                 <div class="d-flex justify-content-between mb-2">
                     <span><i class="bi bi-check-circle text-success"></i> Tersedia</span>
                     <strong>{{ $availableCars }}</strong>

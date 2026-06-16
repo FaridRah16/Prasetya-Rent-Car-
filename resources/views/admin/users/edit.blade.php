@@ -58,13 +58,29 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Nomor Telepon <span class="text-danger">*</span></label>
-                            <input type="text" 
+                            <input type="tel" 
                                    class="form-control @error('phone') is-invalid @enderror" 
                                    name="phone" 
                                    value="{{ old('phone', $user->phone) }}"
                                    placeholder="08xxxxxxxxxx"
+                                   pattern="[0-9]+"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                                    required>
                             @error('phone')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label"><i class="bi bi-whatsapp text-success"></i> Nomor WhatsApp</label>
+                            <input type="tel" 
+                                   class="form-control @error('whatsapp_number') is-invalid @enderror" 
+                                   name="whatsapp_number" 
+                                   value="{{ old('whatsapp_number', $user->whatsapp_number) }}"
+                                   placeholder="08xxxxxxxxxx (opsional)"
+                                   pattern="[0-9]+"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                            @error('whatsapp_number')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -78,20 +94,28 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Password Baru</label>
-                            <input type="password" 
-                                   class="form-control @error('password') is-invalid @enderror" 
-                                   name="password">
+                            <div class="position-relative">
+                                <input type="password" 
+                                       class="form-control @error('password') is-invalid @enderror" 
+                                       name="password"
+                                       id="password">
+                                <i class="bi bi-eye toggle-password" style="cursor:pointer;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6c757d;z-index:5" onclick="togglePassword('password', this)"></i>
+                            </div>
                             @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback" style="display:block">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Minimal 8 karakter</small>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Konfirmasi Password Baru</label>
-                            <input type="password" 
-                                   class="form-control" 
-                                   name="password_confirmation">
+                            <div class="position-relative">
+                                <input type="password" 
+                                       class="form-control" 
+                                       name="password_confirmation"
+                                       id="password_confirmation">
+                                <i class="bi bi-eye toggle-password" style="cursor:pointer;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#6c757d;z-index:5" onclick="togglePassword('password_confirmation', this)"></i>
+                            </div>
                         </div>
 
                         <!-- Driver License Field (shown only if role is driver) -->
@@ -167,6 +191,30 @@
         } else {
             licenseField.style.display = 'none';
         }
+    });
+
+    function togglePassword(fieldId, icon) {
+        const field = document.getElementById(fieldId);
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            field.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+
+    // Auto-format WhatsApp number: 08xx → 628xx
+    document.querySelectorAll('input[name="whatsapp_number"]').forEach(function(input) {
+        input.addEventListener('blur', function() {
+            let val = this.value.replace(/[^0-9]/g, '');
+            if (val.startsWith('0')) {
+                val = '62' + val.substring(1);
+            }
+            this.value = val;
+        });
     });
 </script>
 @endsection

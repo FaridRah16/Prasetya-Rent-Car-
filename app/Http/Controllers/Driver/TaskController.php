@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Driver;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
@@ -60,29 +62,51 @@ class TaskController extends Controller
 
         $task->update(['status' => 'ongoing']);
 
+        // Set mobil ke 'rented' saat tugas dimulai
+        $task->car->update(['status' => 'rented']);
+
+        // Set driver ke 'on_duty' saat tugas dimulai
+        $driver = Driver::where('user_id', Auth::id())->first();
+        if ($driver) {
+            $driver->update(['status' => 'on_duty']);
+        }
+
         return back()->with('success', 'Tugas dimulai. Selamat bertugas!');
     }
 
     /**
-     * Complete task.
+     * Submit delivery proof (photo) and confirm car has been delivered.
+     * Status remains 'ongoing' — only admin can mark as 'completed'.
      */
-    public function completeTask($id)
+    public function completeTask(Request $request, $id)
     {
+        $request->validate([
+            'delivery_proof' => 'required|image|mimes:jpeg,jpg,png|max:5120',
+        ], [
+            'delivery_proof.required' => 'Foto bukti pengantaran wajib diupload',
+            'delivery_proof.image' => 'File harus berupa gambar',
+            'delivery_proof.mimes' => 'Format gambar harus JPEG, JPG, atau PNG',
+            'delivery_proof.max' => 'Ukuran gambar maksimal 5MB',
+        ]);
+
         $task = Booking::where('driver_id', Auth::id())
             ->where('status', 'ongoing')
             ->findOrFail($id);
 
-        $task->update(['status' => 'completed']);
+        // Upload delivery proof
+        $proofPath = $request->file('delivery_proof')->store('delivery_proofs', 'public');
 
-        // Update car status back to available
-        $task->car->update(['status' => 'available']);
-
-        // Update driver status back to available
-        if ($task->driver && $task->driver->user) {
-            $task->driver->update(['status' => 'available']);
+        // Delete old delivery proof if exists
+        if ($task->delivery_proof) {
+            Storage::disk('public')->delete($task->delivery_proof);
         }
 
+        $task->update([
+            'delivery_proof' => $proofPath,
+            // Status TETAP 'ongoing' — hanya admin yang dapat menyelesaikan pemesanan
+        ]);
+
         return redirect()->route('driver.tasks.index')
-            ->with('success', 'Tugas selesai. Terima kasih!');
+            ->with('success', 'Bukti pengantaran berhasil dikirim. Menunggu konfirmasi admin.');
     }
 }

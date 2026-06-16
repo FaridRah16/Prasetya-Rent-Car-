@@ -75,6 +75,10 @@
                             <span class="status-badge bg-info text-white">
                                 <i class="bi bi-check-circle"></i> Menunggu Dimulai
                             </span>
+                        @elseif($task->status === 'ongoing' && $task->delivery_proof)
+                            <span class="status-badge bg-warning text-dark">
+                                <i class="bi bi-hourglass-split"></i> Menunggu Konfirmasi Admin
+                            </span>
                         @elseif($task->status === 'ongoing')
                             <span class="status-badge bg-primary text-white">
                                 <i class="bi bi-car-front"></i> Sedang Berlangsung
@@ -122,6 +126,18 @@
                             </a>
                         </p>
                     </div>
+                    @if($task->user->whatsapp_number)
+                        <div class="col-md-6">
+                            <p class="mb-0">
+                                <strong><i class="bi bi-whatsapp text-success"></i> WhatsApp:</strong><br>
+                                <a href="https://wa.me/{{ formatWhatsAppNumber($task->user->whatsapp_number) }}" 
+                                   target="_blank" 
+                                   class="text-decoration-none text-success">
+                                    {{ $task->user->whatsapp_number }}
+                                </a>
+                            </p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -253,18 +269,48 @@
                         <i class="bi bi-info-circle"></i> Klik tombol di atas saat Anda siap memulai tugas
                     </p>
                 @elseif($task->status === 'ongoing')
-                    <form method="POST" action="{{ route('driver.tasks.complete', $task->id) }}" onsubmit="return confirm('Apakah tugas sudah selesai?')">
-                        @csrf
-                        <button type="submit" class="btn btn-success w-100 mb-2">
-                            <i class="bi bi-check-circle"></i> Selesaikan Tugas
-                        </button>
-                    </form>
-                    <p class="small text-muted mb-0">
-                        <i class="bi bi-info-circle"></i> Klik tombol di atas setelah customer telah menerima mobil
-                    </p>
+                    @if($task->delivery_proof)
+                        <div class="alert alert-success mb-3">
+                            <i class="bi bi-check-circle"></i> <strong>Bukti pengantaran sudah dikirim</strong>
+                        </div>
+                        <div class="mb-3">
+                            <img src="{{ asset('storage/' . $task->delivery_proof) }}" 
+                                 alt="Bukti Pengantaran" 
+                                 class="img-fluid rounded" 
+                                 style="max-height: 200px; width: 100%; object-fit: cover;">
+                        </div>
+                        <p class="small text-muted mb-0">
+                            <i class="bi bi-info-circle"></i> Menunggu admin menyelesaikan pemesanan
+                        </p>
+                    @else
+                        <form method="POST" action="{{ route('driver.tasks.complete', $task->id) }}" 
+                              enctype="multipart/form-data" 
+                              onsubmit="return confirm('Pastikan foto bukti pengantaran sudah benar.')">
+                            @csrf
+                            <div class="mb-3">
+                                <label class="form-label">Foto Bukti Pengantaran <span class="text-danger">*</span></label>
+                                <input type="file" 
+                                       class="form-control @error('delivery_proof') is-invalid @enderror" 
+                                       name="delivery_proof" 
+                                       accept="image/*" 
+                                       capture="environment"
+                                       required>
+                                @error('delivery_proof')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Foto mobil yang sudah diserahkan ke customer</small>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100 mb-2">
+                                <i class="bi bi-camera"></i> Kirim Bukti Pengantaran
+                            </button>
+                        </form>
+                        <p class="small text-muted mb-0">
+                            <i class="bi bi-info-circle"></i> Upload foto bukti mobil sudah diterima customer
+                        </p>
+                    @endif
                 @else
                     <div class="alert alert-success mb-0">
-                        <i class="bi bi-check-circle"></i> Tugas telah selesai
+                        <i class="bi bi-check-circle"></i> Tugas telah diselesaikan oleh admin
                     </div>
                 @endif
             </div>
@@ -279,7 +325,7 @@
                 <a href="tel:{{ $task->user->phone }}" class="btn btn-outline-primary">
                     <i class="bi bi-telephone-fill"></i> Telepon
                 </a>
-                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $task->user->phone) }}" 
+                <a href="https://wa.me/{{ formatWhatsAppNumber($task->user->whatsapp_number ?: $task->user->phone) }}" 
                    target="_blank" 
                    class="btn btn-outline-success">
                     <i class="bi bi-whatsapp"></i> WhatsApp

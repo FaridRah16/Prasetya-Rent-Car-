@@ -66,6 +66,7 @@
                     <input type="hidden" name="name" value="{{ Auth::user()->name }}">
                     <input type="hidden" name="email" value="{{ Auth::user()->email }}">
                     <input type="hidden" name="phone" value="{{ Auth::user()->phone }}">
+                    <input type="hidden" name="whatsapp_number" value="{{ Auth::user()->whatsapp_number }}">
                     
                     <div class="mb-3">
                         <label for="avatarInput" class="btn btn-primary btn-sm">
@@ -156,15 +157,34 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Nomor Telepon <span class="text-danger">*</span></label>
-                            <input type="text" 
+                            <input type="tel" 
                                    class="form-control @error('phone') is-invalid @enderror" 
                                    name="phone" 
                                    value="{{ old('phone', Auth::user()->phone) }}"
                                    placeholder="08xxxxxxxxxx"
+                                   pattern="[0-9]+"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                                    required>
                             @error('phone')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-whatsapp text-success"></i> Nomor WhatsApp
+                            </label>
+                            <input type="tel" 
+                                   class="form-control @error('whatsapp_number') is-invalid @enderror" 
+                                   name="whatsapp_number" 
+                                   value="{{ old('whatsapp_number', Auth::user()->whatsapp_number) }}"
+                                   placeholder="08xxxxxxxxxx (kosongkan jika sama dengan telepon)"
+                                   pattern="[0-9]+"
+                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                            @error('whatsapp_number')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Digunakan untuk driver/admin menghubungi Anda via WhatsApp</small>
                         </div>
 
                         <div class="col-12">
@@ -220,6 +240,17 @@
             // Auto submit form when file selected
             document.getElementById('avatarForm').submit();
         }
+    });
+
+    // Auto-format WhatsApp number: 08xx → 628xx
+    document.querySelectorAll('input[name="whatsapp_number"]').forEach(function(input) {
+        input.addEventListener('blur', function() {
+            let val = this.value.replace(/[^0-9]/g, '');
+            if (val.startsWith('0')) {
+                val = '62' + val.substring(1);
+            }
+            this.value = val;
+        });
     });
 </script>
 @endsection

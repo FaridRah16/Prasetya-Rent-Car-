@@ -75,12 +75,43 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <small class="text-muted">Email</small>
-                        <p class="mb-0">{{ $booking->user->email }}</p>
+                        <p class="mb-0">
+                            <a href="mailto:{{ $booking->user->email }}" class="text-decoration-none">{{ $booking->user->email }}</a>
+                        </p>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-3">
                         <small class="text-muted">No. Telepon</small>
-                        <p class="mb-0">{{ $booking->user->phone }}</p>
+                        <p class="mb-0">
+                            <a href="tel:{{ $booking->user->phone }}" class="text-decoration-none">{{ $booking->user->phone }}</a>
+                        </p>
                     </div>
+                    @if($booking->user->whatsapp_number)
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted">No. WhatsApp</small>
+                            <p class="mb-0">
+                                <a href="https://wa.me/{{ formatWhatsAppNumber($booking->user->whatsapp_number) }}" 
+                                   target="_blank" 
+                                   class="text-decoration-none text-success">
+                                    <i class="bi bi-whatsapp"></i> {{ $booking->user->whatsapp_number }}
+                                </a>
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Hubungi Customer Buttons -->
+                <div class="d-flex gap-2 mt-3 pt-3 border-top">
+                    <a href="tel:{{ $booking->user->phone }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-telephone-fill"></i> Telepon
+                    </a>
+                    @php
+                        $waNumber = formatWhatsAppNumber($booking->user->whatsapp_number ?: $booking->user->phone);
+                    @endphp
+                    <a href="https://wa.me/{{ $waNumber }}" 
+                       target="_blank" 
+                       class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-whatsapp"></i> WhatsApp
+                    </a>
                 </div>
             </div>
         </div>
@@ -165,8 +196,7 @@
             <div class="card-body">
                 @if($booking->driver_id)
                     <div class="alert alert-info mb-3">
-                        <strong>Driver Saat Ini:</strong> {{ $booking->driver->user->name ?? '-' }}
-                        <br><small>SIM: {{ $booking->driver->license_number ?? '-' }}</small>
+                        <strong>Driver Saat Ini:</strong> {{ $booking->driver->name ?? '-' }}
                     </div>
                 @else
                     <div class="alert alert-warning mb-3">
@@ -244,6 +274,36 @@
                 </div>
             </div>
         @endif
+
+        <!-- Delivery Proof (Bukti Pengantaran) -->
+        @if($booking->delivery_proof)
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-camera"></i> Bukti Pengantaran</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i> Driver telah mengirim bukti pengantaran. Silakan periksa dan selesaikan pemesanan jika sudah sesuai.
+                    </div>
+                    <div class="mb-3">
+                        <img src="{{ asset('storage/' . $booking->delivery_proof) }}" 
+                             alt="Bukti Pengantaran" 
+                             class="payment-proof-img img-fluid">
+                    </div>
+
+                    @if($booking->status === 'ongoing')
+                        <form method="POST" action="{{ route('admin.bookings.updateStatus', $booking->id) }}" 
+                              onsubmit="return confirm('Yakin ingin menyelesaikan pemesanan ini?')">
+                            @csrf
+                            <input type="hidden" name="status" value="completed">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-circle"></i> Selesaikan Pemesanan
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 
     <!-- Sidebar -->
@@ -261,6 +321,8 @@
                             <span class="badge bg-warning text-dark">Pending</span>
                         @elseif($booking->status === 'confirmed')
                             <span class="badge bg-info">Dikonfirmasi</span>
+                        @elseif($booking->status === 'ongoing' && $booking->delivery_proof)
+                            <span class="badge bg-warning text-dark">Menunggu Selesai</span>
                         @elseif($booking->status === 'ongoing')
                             <span class="badge bg-primary">Berlangsung</span>
                         @elseif($booking->status === 'completed')

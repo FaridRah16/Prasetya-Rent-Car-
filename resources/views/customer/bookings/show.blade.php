@@ -120,9 +120,9 @@
                         <div class="col-12">
                             <small class="text-muted">Driver</small>
                             <p class="mb-0">
-                                <i class="bi bi-person"></i> {{ $booking->driver->user->name ?? '-' }}
-                                @if($booking->driver && $booking->driver->user)
-                                    <small class="text-muted">({{ $booking->driver->user->phone }})</small>
+                                <i class="bi bi-person"></i> {{ $booking->driver->name ?? '-' }}
+                                @if($booking->driver)
+                                    <small class="text-muted">({{ $booking->driver->phone }})</small>
                                 @endif
                             </p>
                         </div>

@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Driver;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -50,21 +51,28 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
             'email' => 'required|email|unique:users,email',
-            'phone' => 'required|string|max:20',
-            'password' => 'required|string|min:8|confirmed',
+            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
             'role' => 'required|in:admin,customer,driver',
             'license_number' => 'required_if:role,driver|nullable|string|unique:drivers,license_number',
         ], [
             'name.required' => 'Nama harus diisi',
+            'name.regex' => 'Nama hanya boleh mengandung huruf',
             'email.required' => 'Email harus diisi',
             'email.email' => 'Format email tidak valid',
             'email.unique' => 'Email sudah terdaftar',
             'phone.required' => 'Nomor telepon harus diisi',
+            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
+            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
             'password.required' => 'Password harus diisi',
             'password.min' => 'Password minimal 8 karakter',
             'password.confirmed' => 'Konfirmasi password tidak cocok',
+            'password.letters' => 'Password harus mengandung huruf',
+            'password.numbers' => 'Password harus mengandung angka',
+            'password.symbols' => 'Password harus mengandung simbol',
             'role.required' => 'Role harus dipilih',
             'license_number.required_if' => 'Nomor SIM harus diisi untuk driver',
             'license_number.unique' => 'Nomor SIM sudah terdaftar',
@@ -74,7 +82,8 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'password' => Hash::make($request->password),
+            'whatsapp_number' => $request->whatsapp_number,
+            'password' => $request->password, // Cast 'hashed' di model otomatis meng-hash password
             'role' => $request->role,
         ]);
 
@@ -117,19 +126,26 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
             'email' => 'required|email|unique:users,email,' . $id,
-            'phone' => 'required|string|max:20',
-            'password' => 'nullable|string|min:8|confirmed',
+            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
             'role' => 'required|in:admin,customer,driver',
             'license_number' => 'required_if:role,driver|nullable|string',
         ], [
             'name.required' => 'Nama harus diisi',
+            'name.regex' => 'Nama hanya boleh mengandung huruf',
             'email.required' => 'Email harus diisi',
             'email.unique' => 'Email sudah terdaftar',
             'phone.required' => 'Nomor telepon harus diisi',
+            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
+            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
             'password.min' => 'Password minimal 8 karakter',
             'password.confirmed' => 'Konfirmasi password tidak cocok',
+            'password.letters' => 'Password harus mengandung huruf',
+            'password.numbers' => 'Password harus mengandung angka',
+            'password.symbols' => 'Password harus mengandung simbol',
             'license_number.required_if' => 'Nomor SIM harus diisi untuk driver',
         ]);
 
@@ -137,12 +153,13 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
+            'whatsapp_number' => $request->whatsapp_number,
             'role' => $request->role,
         ];
 
         // Update password if provided
         if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
+            $data['password'] = $request->password; // Cast 'hashed' di model otomatis meng-hash password
         }
 
         $user->update($data);
@@ -194,6 +211,16 @@ class UserController extends Controller
             if ($activeBookings > 0) {
                 return back()->with('error', 'Tidak dapat menghapus user yang memiliki booking aktif');
             }
+        }
+
+        // Hapus file avatar dari storage jika ada
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        // Hapus record driver secara eksplisit jika user adalah driver
+        if ($user->driver) {
+            $user->driver->delete();
         }
 
         $user->delete();

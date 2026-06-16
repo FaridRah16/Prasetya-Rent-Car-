@@ -7,7 +7,6 @@ use App\Models\Car;
 use App\Models\Driver;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -22,7 +21,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Admin Prasetya',
             'email' => 'admin@prasetyarentcar.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'admin',
             'phone' => '08123456789',
         ]);
@@ -31,7 +30,7 @@ class DatabaseSeeder extends Seeder
         $driver1 = User::create([
             'name' => 'Budi Santoso',
             'email' => 'budi@driver.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'driver',
             'phone' => '08234567890',
         ]);
@@ -45,7 +44,7 @@ class DatabaseSeeder extends Seeder
         $driver2 = User::create([
             'name' => 'Agus Wijaya',
             'email' => 'agus@driver.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'driver',
             'phone' => '08345678901',
         ]);
@@ -60,7 +59,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Siti Nurhaliza',
             'email' => 'siti@customer.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08456789012',
         ]);
@@ -68,7 +67,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Andi Pratama',
             'email' => 'andi@customer.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08567890123',
         ]);
@@ -76,7 +75,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Dewi Lestari',
             'email' => 'dewi@customer.com',
-            'password' => Hash::make('password'),
+            'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08678901234',
         ]);

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['user_id', 'car_id', 'driver_id', 'start_date', 'end_date', 'total_days', 'total_price', 'pickup_location', 'dropoff_location', 'status', 'payment_status', 'payment_proof', 'notes'])]
+#[Fillable(['user_id', 'car_id', 'driver_id', 'start_date', 'end_date', 'total_days', 'total_price', 'pickup_location', 'dropoff_location', 'status', 'payment_status', 'payment_proof', 'delivery_proof', 'notes'])]
 class Booking extends Model
 {
     use HasFactory;

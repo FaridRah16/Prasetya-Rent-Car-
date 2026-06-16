@@ -4,18 +4,6 @@
 @section('page-title', 'Dashboard Driver')
 
 @section('content')
-@php
-    $activeTasks = \App\Models\Booking::where('driver_id', Auth::id())
-        ->whereIn('status', ['confirmed', 'ongoing'])
-        ->count();
-    $completedTasks = \App\Models\Booking::where('driver_id', Auth::id())
-        ->where('status', 'completed')
-        ->count();
-    $ongoingTasks = \App\Models\Booking::where('driver_id', Auth::id())
-        ->where('status', 'ongoing')
-        ->count();
-    $driverStatus = Auth::user()->driver ? Auth::user()->driver->status : 'available';
-@endphp
 
 <div class="row">
     <div class="col-md-4">
@@ -79,14 +67,6 @@
         </div>
 
         <!-- Recent Tasks -->
-        @php
-            $recentTasks = \App\Models\Booking::where('driver_id', Auth::id())
-                ->with(['user', 'car'])
-                ->orderBy('created_at', 'desc')
-                ->take(3)
-                ->get();
-        @endphp
-
         @if($recentTasks->count() > 0)
             <div class="card mt-4">
                 <div class="card-header">
