@@ -8,7 +8,9 @@ use App\Models\Car;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -52,72 +54,138 @@ class BookingController extends Controller
         $request->validate([
             'car_id' => 'required|exists:cars,id',
             'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
+            'pickup_time' => 'required|date_format:H:i',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'return_time' => 'required|date_format:H:i',
             'pickup_location' => 'required|string|max:255',
             'dropoff_location' => 'required|string|max:255',
-            'driver_id' => 'nullable|exists:users,id',
+            'pickup_lat' => 'nullable|numeric',
+            'pickup_lng' => 'nullable|numeric',
+            'dropoff_lat' => 'nullable|numeric',
+            'dropoff_lng' => 'nullable|numeric',
+            'driver_id' => 'nullable|exists:drivers,user_id',
             'notes' => 'nullable|string',
         ], [
             'car_id.required' => 'Pilih mobil yang ingin disewa',
             'car_id.exists' => 'Mobil tidak ditemukan',
             'start_date.required' => 'Tanggal mulai harus diisi',
             'start_date.after_or_equal' => 'Tanggal mulai minimal hari ini',
+            'pickup_time.required' => 'Jam penjemputan harus diisi',
+            'pickup_time.date_format' => 'Format jam penjemputan tidak valid',
             'end_date.required' => 'Tanggal selesai harus diisi',
-            'end_date.after' => 'Tanggal selesai harus setelah tanggal mulai',
+            'end_date.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai',
+            'return_time.required' => 'Jam pengembalian harus diisi',
+            'return_time.date_format' => 'Format jam pengembalian tidak valid',
             'pickup_location.required' => 'Lokasi penjemputan harus diisi',
             'dropoff_location.required' => 'Lokasi pengantaran harus diisi',
             'driver_id.exists' => 'Driver tidak ditemukan',
         ]);
 
-        // Get car
-        $car = Car::findOrFail($request->car_id);
+        // Calculate pickup & return datetime (gabungan tanggal + jam)
+        $pickupDateTime = Carbon::parse($request->start_date . ' ' . $request->pickup_time);
+        $returnDateTime = Carbon::parse($request->end_date . ' ' . $request->return_time);
 
-        // Check if car is available
-        if ($car->status !== 'available') {
-            return back()->with('error', 'Mobil tidak tersedia untuk disewa');
-        }
-
-        // Cek apakah ada booking yang tumpang-tindih untuk mobil yang sama di tanggal tersebut
-        $overlappingBooking = Booking::where('car_id', $request->car_id)
-            ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
-            ->where(function($query) use ($request) {
-                $query->whereBetween('start_date', [$request->start_date, $request->end_date])
-                    ->orWhereBetween('end_date', [$request->start_date, $request->end_date])
-                    ->orWhere(function($q) use ($request) {
-                        $q->where('start_date', '<=', $request->start_date)
-                          ->where('end_date', '>=', $request->end_date);
-                    });
-            })
-            ->exists();
-
-        if ($overlappingBooking) {
-            return back()->with('error', 'Mobil sudah di-booking pada tanggal yang Anda pilih. Silakan pilih tanggal lain.')
+        // Validate: return must be after pickup
+        if ($returnDateTime->lte($pickupDateTime)) {
+            return back()->withErrors(['return_time' => 'Waktu pengembalian harus setelah waktu penjemputan'])
                 ->withInput();
         }
 
-        // Calculate total days and price
-        $startDate = Carbon::parse($request->start_date);
-        $endDate = Carbon::parse($request->end_date);
-        $totalDays = (int) $startDate->diffInDays($endDate) + 1; // Include the start day
-        $totalPrice = $totalDays * $car->price_per_day;
+        // Hitung jumlah hari berdasarkan jam (pembulatan ke atas)
+        // Contoh: 16 10:00 → 17 10:00 = 24 jam = 1 hari
+        // Contoh: 16 10:00 → 17 14:00 = 28 jam = 2 hari
+        $totalHours = $pickupDateTime->diffInHours($returnDateTime);
+        $totalDays = (int) ceil($totalHours / 24);
+        if ($totalDays < 1) $totalDays = 1;
 
-        // Create booking
-        $booking = Booking::create([
-            'user_id' => Auth::id(),
-            'car_id' => $request->car_id,
-            'driver_id' => $request->driver_id,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'total_days' => $totalDays,
-            'total_price' => $totalPrice,
-            'pickup_location' => $request->pickup_location,
-            'dropoff_location' => $request->dropoff_location,
-            'status' => 'pending',
-            'payment_status' => 'unpaid',
-            'notes' => $request->notes,
-        ]);
+        // Dibungkus transaction + lockForUpdate untuk mencegah race condition
+        // (dua request bersamaan lolos cek overlap dan membuat double-booking).
+        $booking = DB::transaction(function () use ($request, $pickupDateTime, $returnDateTime, $totalDays) {
+            // Lock baris mobil agar concurrent request menunggu
+            $car = Car::lockForUpdate()->findOrFail($request->car_id);
 
-        // Note: Car and driver status will be updated by admin after payment verification
+            // Cek ulang ketersediaan mobil di dalam lock
+            if ($car->status !== 'available') {
+                throw ValidationException::withMessages([
+                    'car_id' => 'Mobil tidak tersedia untuk disewa',
+                ]);
+            }
+
+            // Cek booking yang tumpang-tindih, mempertimbangkan TANGGAL + JAM.
+            // Dua rentang waktu [A_start, A_end) dan [B_start, B_end) overlap jika:
+            //   A_start < B_end  AND  B_start < A_end
+            // Disimpan sebagai DATETIME string (Y-m-d H:i:s) agar perbandingan akurat per jam.
+            $overlapping = Booking::where('car_id', $request->car_id)
+                ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+                ->where(function ($query) use ($pickupDateTime, $returnDateTime) {
+                    // Bangun datetime dari kolom tanggal + jam (fallback jam 00:00 jika NULL)
+                    $query->whereRaw(
+                        "CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?",
+                        [$returnDateTime->format('Y-m-d H:i:s')]
+                    )
+                    ->whereRaw(
+                        "CONCAT(end_date, ' ', COALESCE(return_time, '00:00:00')) > ?",
+                        [$pickupDateTime->format('Y-m-d H:i:s')]
+                    );
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            if ($overlapping) {
+                throw ValidationException::withMessages([
+                    'car_id' => 'Mobil sudah di-booking pada tanggal & jam yang Anda pilih. Silakan pilih jadwal lain.',
+                ]);
+            }
+
+            // Cek tumpang-tindih DRIVER (jika customer memilih driver).
+            // Mencegah satu driver ditugaskan ke dua booking pada rentang waktu yang sama.
+            if ($request->driver_id) {
+                $driverOverlap = Booking::where('driver_id', $request->driver_id)
+                    ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+                    ->where(function ($query) use ($pickupDateTime, $returnDateTime) {
+                        $query->whereRaw(
+                            "CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?",
+                            [$returnDateTime->format('Y-m-d H:i:s')]
+                        )
+                        ->whereRaw(
+                            "CONCAT(end_date, ' ', COALESCE(return_time, '00:00:00')) > ?",
+                            [$pickupDateTime->format('Y-m-d H:i:s')]
+                        );
+                    })
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($driverOverlap) {
+                    throw ValidationException::withMessages([
+                        'driver_id' => 'Driver sudah ditugaskan pada tanggal & jam yang Anda pilih. Silakan pilih driver lain atau jadwal lain.',
+                    ]);
+                }
+            }
+
+            $totalPrice = $totalDays * $car->price_per_day;
+
+            // Create booking
+            return Booking::create([
+                'user_id' => Auth::id(),
+                'car_id' => $request->car_id,
+                'driver_id' => $request->driver_id,
+                'start_date' => $request->start_date,
+                'pickup_time' => $request->pickup_time,
+                'end_date' => $request->end_date,
+                'return_time' => $request->return_time,
+                'total_days' => $totalDays,
+                'total_price' => $totalPrice,
+                'pickup_location' => $request->pickup_location,
+                'pickup_lat' => $request->pickup_lat,
+                'pickup_lng' => $request->pickup_lng,
+                'dropoff_location' => $request->dropoff_location,
+                'dropoff_lat' => $request->dropoff_lat,
+                'dropoff_lng' => $request->dropoff_lng,
+                'status' => 'pending',
+                'payment_status' => 'unpaid',
+                'notes' => $request->notes,
+            ]);
+        });
 
         return redirect()->route('customer.bookings.show', $booking->id)
             ->with('success', 'Booking berhasil dibuat! Silakan lakukan pembayaran dan upload bukti bayar.');
@@ -185,24 +253,12 @@ class BookingController extends Controller
             return back()->with('error', 'Hanya booking dengan status pending yang bisa dibatalkan');
         }
 
-        // Cegah pembatalan jika mobil sudah berstatus 'rented' (sedang digunakan)
-        if ($booking->car->status === 'rented') {
-            return back()->with('error', 'Tidak dapat membatalkan booking karena mobil sudah dalam proses penggunaan');
-        }
-
-        // Update booking status
+        // Booking yang masih 'pending' belum pernah mengubah status mobil/driver
+        // (perubahan ke 'rented'/'on_duty' baru terjadi saat status menjadi 'ongoing').
+        // Karena itu pembatalan cukup mengubah status booking ini saja, tanpa menyentuh
+        // status mobil/driver — agar tidak menimpa state milik booking lain yang sedang aktif
+        // (mis. mobil yang sama sedang 'rented' oleh booking ongoing yang berbeda).
         $booking->update(['status' => 'cancelled']);
-
-        // Update car status back to available (hanya jika mobil belum rented)
-        $booking->car->update(['status' => 'available']);
-
-        // Update driver status if there's a driver
-        if ($booking->driver_id) {
-            $driver = Driver::where('user_id', $booking->driver_id)->first();
-            if ($driver) {
-                $driver->update(['status' => 'available']);
-            }
-        }
 
         return redirect()->route('customer.bookings.index')
             ->with('success', 'Booking berhasil dibatalkan');

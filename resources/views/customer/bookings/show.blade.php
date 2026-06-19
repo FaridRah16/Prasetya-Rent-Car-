@@ -97,22 +97,46 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <small class="text-muted">Tanggal Mulai</small>
-                        <p class="mb-0 fw-bold">{{ $booking->start_date->format('d M Y') }}</p>
+                        <small class="text-muted">Tanggal & Jam Mulai</small>
+                        <p class="mb-0 fw-bold">
+                            {{ $booking->start_date->format('d M Y') }}
+                            @if($booking->pickup_time)
+                                <span class="badge bg-info">{{ \Carbon\Carbon::parse($booking->pickup_time)->format('H:i') }} WIB</span>
+                            @endif
+                        </p>
                     </div>
                     <div class="col-md-6">
-                        <small class="text-muted">Tanggal Selesai</small>
-                        <p class="mb-0 fw-bold">{{ $booking->end_date->format('d M Y') }}</p>
+                        <small class="text-muted">Tanggal & Jam Selesai</small>
+                        <p class="mb-0 fw-bold">
+                            {{ $booking->end_date->format('d M Y') }}
+                            @if($booking->return_time)
+                                <span class="badge bg-info">{{ \Carbon\Carbon::parse($booking->return_time)->format('H:i') }} WIB</span>
+                            @endif
+                        </p>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <small class="text-muted">Lokasi Penjemputan</small>
-                        <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ $booking->pickup_location }}</p>
+                        <p class="mb-0">
+                            <i class="bi bi-geo-alt"></i> {{ $booking->pickup_location }}
+                            @if($booking->pickup_lat && $booking->pickup_lng)
+                                <br><a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" class="small text-primary">
+                                    <i class="bi bi-map"></i> Lihat di Google Maps
+                                </a>
+                            @endif
+                        </p>
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted">Lokasi Pengantaran</small>
-                        <p class="mb-0"><i class="bi bi-geo-alt"></i> {{ $booking->dropoff_location }}</p>
+                        <p class="mb-0">
+                            <i class="bi bi-geo-alt"></i> {{ $booking->dropoff_location }}
+                            @if($booking->dropoff_lat && $booking->dropoff_lng)
+                                <br><a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" class="small text-primary">
+                                    <i class="bi bi-map"></i> Lihat di Google Maps
+                                </a>
+                            @endif
+                        </p>
                     </div>
                 </div>
                 @if($booking->driver_id)
@@ -122,7 +146,17 @@
                             <p class="mb-0">
                                 <i class="bi bi-person"></i> {{ $booking->driver->name ?? '-' }}
                                 @if($booking->driver)
-                                    <small class="text-muted">({{ $booking->driver->phone }})</small>
+                                    @if($booking->driver->phone)
+                                        <small class="text-muted">({{ $booking->driver->phone }})</small>
+                                    @endif
+                                    @php $driverContact = $booking->driver->whatsapp_number ?: $booking->driver->phone; @endphp
+                                    @if($driverContact)
+                                        <a href="https://wa.me/{{ formatWhatsAppNumber($driverContact) }}"
+                                           target="_blank"
+                                           class="small text-success ms-1">
+                                            <i class="bi bi-whatsapp"></i> WhatsApp
+                                        </a>
+                                    @endif
                                 @endif
                             </p>
                         </div>
@@ -149,9 +183,9 @@
                     <p class="mb-3">Silakan lakukan pembayaran sejumlah <strong>Rp {{ number_format($booking->total_price, 0, ',', '.') }}</strong> ke rekening:</p>
                     
                     <div class="alert alert-info">
-                        <strong>Bank BCA</strong><br>
-                        No. Rekening: <strong>1234567890</strong><br>
-                        A/N: <strong>Prasetya Rent Car</strong>
+                        <strong>{{ config('payment.bank_name') }}</strong><br>
+                        No. Rekening: <strong>{{ config('payment.account_number') }}</strong><br>
+                        A/N: <strong>{{ config('payment.account_name') }}</strong>
                     </div>
 
                     <form method="POST" action="{{ route('customer.bookings.uploadPayment', $booking->id) }}" enctype="multipart/form-data">

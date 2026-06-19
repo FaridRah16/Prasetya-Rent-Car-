@@ -161,22 +161,42 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <small class="text-muted">Tanggal Mulai</small>
-                        <p class="mb-0 fw-bold">{{ $booking->start_date->format('d M Y') }}</p>
+                        <small class="text-muted">Tanggal & Jam Mulai</small>
+                        <p class="mb-0 fw-bold">
+                            {{ $booking->start_date->format('d M Y') }}
+                            @if($booking->pickup_time)
+                                <span class="badge bg-info">{{ \Carbon\Carbon::parse($booking->pickup_time)->format('H:i') }} WIB</span>
+                            @endif
+                        </p>
                     </div>
                     <div class="col-md-6">
-                        <small class="text-muted">Tanggal Selesai</small>
-                        <p class="mb-0 fw-bold">{{ $booking->end_date->format('d M Y') }}</p>
+                        <small class="text-muted">Tanggal & Jam Selesai</small>
+                        <p class="mb-0 fw-bold">
+                            {{ $booking->end_date->format('d M Y') }}
+                            @if($booking->return_time)
+                                <span class="badge bg-info">{{ \Carbon\Carbon::parse($booking->return_time)->format('H:i') }} WIB</span>
+                            @endif
+                        </p>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <small class="text-muted">Lokasi Penjemputan</small>
                         <p class="mb-0"><i class="bi bi-geo-alt-fill text-primary"></i> {{ $booking->pickup_location }}</p>
+                        @if($booking->pickup_lat && $booking->pickup_lng)
+                            <a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" class="small">
+                                <i class="bi bi-map"></i> Lihat di Google Maps
+                            </a>
+                        @endif
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted">Lokasi Pengantaran</small>
                         <p class="mb-0"><i class="bi bi-geo-alt-fill text-success"></i> {{ $booking->dropoff_location }}</p>
+                        @if($booking->dropoff_lat && $booking->dropoff_lng)
+                            <a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" class="small">
+                                <i class="bi bi-map"></i> Lihat di Google Maps
+                            </a>
+                        @endif
                     </div>
                 </div>
                 @if($booking->notes)

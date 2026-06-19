@@ -191,15 +191,25 @@
                     <div class="col-md-6">
                         <p class="mb-2">
                             <i class="bi bi-calendar-event text-primary"></i>
-                            <strong>Tanggal Mulai</strong><br>
-                            <span class="ms-4">{{ $task->start_date->format('d F Y') }}</span>
+                            <strong>Tanggal & Jam Mulai</strong><br>
+                            <span class="ms-4">
+                                {{ $task->start_date->format('d F Y') }}
+                                @if($task->pickup_time)
+                                    <span class="badge bg-info">{{ \Carbon\Carbon::parse($task->pickup_time)->format('H:i') }} WIB</span>
+                                @endif
+                            </span>
                         </p>
                     </div>
                     <div class="col-md-6">
                         <p class="mb-2">
                             <i class="bi bi-calendar-check text-success"></i>
-                            <strong>Tanggal Selesai</strong><br>
-                            <span class="ms-4">{{ $task->end_date->format('d F Y') }}</span>
+                            <strong>Tanggal & Jam Selesai</strong><br>
+                            <span class="ms-4">
+                                {{ $task->end_date->format('d F Y') }}
+                                @if($task->return_time)
+                                    <span class="badge bg-info">{{ \Carbon\Carbon::parse($task->return_time)->format('H:i') }} WIB</span>
+                                @endif
+                            </span>
                         </p>
                     </div>
                 </div>
@@ -219,19 +229,21 @@
                 <div class="timeline">
                     <div class="timeline-item active">
                         <h6 class="mb-1"><i class="bi bi-geo-alt-fill text-success"></i> Lokasi Penjemputan</h6>
-                        <p class="mb-0 text-muted">{{ $task->pickup_location }}</p>
+                        <p class="mb-1 text-muted">{{ $task->pickup_location }}</p>
+                        @if($task->pickup_lat && $task->pickup_lng)
+                            <a href="https://www.google.com/maps?q={{ $task->pickup_lat }},{{ $task->pickup_lng }}" target="_blank" class="small">
+                                <i class="bi bi-map"></i> Lihat di Google Maps
+                            </a>
+                        @endif
                     </div>
                     <div class="timeline-item">
                         <h6 class="mb-1"><i class="bi bi-geo-fill text-danger"></i> Lokasi Pengantaran</h6>
-                        <p class="mb-0 text-muted">{{ $task->dropoff_location }}</p>
-                    </div>
-                </div>
-
-                <!-- Map Placeholder -->
-                <div class="map-placeholder mt-3">
-                    <div class="text-center">
-                        <i class="bi bi-map" style="font-size: 3rem;"></i>
-                        <p class="mb-0">Peta Lokasi</p>
+                        <p class="mb-1 text-muted">{{ $task->dropoff_location }}</p>
+                        @if($task->dropoff_lat && $task->dropoff_lng)
+                            <a href="https://www.google.com/maps?q={{ $task->dropoff_lat }},{{ $task->dropoff_lng }}" target="_blank" class="small">
+                                <i class="bi bi-map"></i> Lihat di Google Maps
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

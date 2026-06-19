@@ -65,7 +65,12 @@ class BookingController extends Controller
 
         $booking = Booking::findOrFail($id);
         $oldStatus = $booking->status;
-        
+
+        // Booking yang sudah selesai/dibatalkan bersifat final — tidak boleh diubah lagi.
+        if (in_array($oldStatus, ['completed', 'cancelled']) && $request->status !== $oldStatus) {
+            return back()->with('error', 'Status booking yang sudah selesai atau dibatalkan tidak dapat diubah lagi');
+        }
+
         $booking->update(['status' => $request->status]);
 
         // Update car status based on booking status
@@ -104,7 +109,12 @@ class BookingController extends Controller
         ]);
 
         $booking = Booking::findOrFail($id);
-        
+
+        // Tidak bisa menugaskan driver ke booking yang sudah selesai/dibatalkan.
+        if (in_array($booking->status, ['completed', 'cancelled'])) {
+            return back()->with('error', 'Tidak dapat menugaskan driver pada booking yang sudah selesai atau dibatalkan');
+        }
+
         // Release old driver if exists
         if ($booking->driver_id) {
             $oldDriver = Driver::where('user_id', $booking->driver_id)->first();
