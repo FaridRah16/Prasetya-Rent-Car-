@@ -33,6 +33,12 @@ class BookingController extends Controller
      */
     public function create(Request $request)
     {
+        // Wajib terverifikasi sebelum memesan
+        if (! Auth::user()->isVerified()) {
+            return redirect()->route('customer.profile.edit')
+                ->with('error', 'Selesaikan verifikasi akun (nomor telepon & foto SIM) dan tunggu konfirmasi admin sebelum melakukan pemesanan.');
+        }
+
         $selectedCarId = $request->input('car_id');
         
         // Get available cars
@@ -51,6 +57,12 @@ class BookingController extends Controller
      */
     public function store(Request $request)
     {
+        // Wajib terverifikasi sebelum memesan (gating sisi server)
+        if (! Auth::user()->isVerified()) {
+            return redirect()->route('customer.profile.edit')
+                ->with('error', 'Selesaikan verifikasi akun (nomor telepon & foto SIM) dan tunggu konfirmasi admin sebelum melakukan pemesanan.');
+        }
+
         $request->validate([
             'car_id' => 'required|exists:cars,id',
             'start_date' => 'required|date|after_or_equal:today',

@@ -120,6 +120,13 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
         <!-- Profile Information -->
         <div class="card mb-4">
             <div class="card-header">
@@ -194,6 +201,78 @@
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Verifikasi Akun -->
+        <div class="card mb-4 border-{{ Auth::user()->isVerified() ? 'success' : (Auth::user()->isPendingVerification() ? 'warning' : 'danger') }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-patch-check"></i> Verifikasi Akun</h5>
+                @if(Auth::user()->isVerified())
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Terverifikasi</span>
+                @elseif(Auth::user()->isPendingVerification())
+                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Menunggu Verifikasi</span>
+                @else
+                    <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Belum Terverifikasi</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if(Auth::user()->isVerified())
+                    <p class="mb-0 text-success">
+                        <i class="bi bi-shield-check"></i> Akun Anda telah terverifikasi
+                        @if(Auth::user()->verified_at)
+                            pada {{ Auth::user()->verified_at->format('d F Y H:i') }}
+                        @endif
+                        . Anda dapat melakukan pemesanan.
+                    </p>
+                @elseif(Auth::user()->isPendingVerification())
+                    <p class="mb-0 text-muted">
+                        <i class="bi bi-info-circle"></i> Pengajuan verifikasi Anda sedang ditinjau admin.
+                        Anda dapat melakukan pemesanan setelah disetujui.
+                    </p>
+                @else
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Sebelum dapat melakukan <strong>pemesanan</strong>, lengkapi verifikasi:
+                        masukkan nomor telepon dan unggah foto SIM Anda.
+                    </div>
+                    <form method="POST" action="{{ route('customer.profile.verification') }}" enctype="multipart/form-data">
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nomor Telepon <span class="text-danger">*</span></label>
+                                <input type="tel"
+                                       class="form-control @error('phone') is-invalid @enderror"
+                                       name="phone"
+                                       value="{{ old('phone', Auth::user()->phone) }}"
+                                       placeholder="08xxxxxxxxxx"
+                                       pattern="[0-9]+"
+                                       oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                                       required>
+                                @error('phone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Foto SIM <span class="text-danger">*</span></label>
+                                <input type="file"
+                                       class="form-control @error('sim_photo') is-invalid @enderror"
+                                       name="sim_photo"
+                                       accept="image/*"
+                                       required>
+                                @error('sim_photo')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Format: JPG, PNG (Max: 2MB)</small>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Kirim Verifikasi
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                @endif
             </div>
         </div>
 

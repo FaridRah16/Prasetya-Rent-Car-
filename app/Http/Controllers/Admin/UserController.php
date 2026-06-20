@@ -218,6 +218,11 @@ class UserController extends Controller
             Storage::disk('public')->delete($user->avatar);
         }
 
+        // Hapus foto SIM dari storage jika ada
+        if ($user->sim_photo) {
+            Storage::disk('public')->delete($user->sim_photo);
+        }
+
         // Hapus record driver secara eksplisit jika user adalah driver
         if ($user->driver) {
             $user->driver->delete();
@@ -227,5 +232,45 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil dihapus');
+    }
+
+    /**
+     * Approve a customer's account verification.
+     */
+    public function verifyUser($id)
+    {
+        $user = User::findOrFail($id);
+
+        if (! $user->sim_photo) {
+            return back()->with('error', 'User belum mengunggah foto SIM, tidak dapat diverifikasi');
+        }
+
+        $user->update([
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+        ]);
+
+        return back()->with('success', 'Akun ' . $user->name . ' berhasil diverifikasi');
+    }
+
+    /**
+     * Reject a customer's account verification (kembali ke belum terverifikasi).
+     */
+    public function rejectVerification($id)
+    {
+        $user = User::findOrFail($id);
+
+        // Hapus foto SIM agar customer mengunggah ulang
+        if ($user->sim_photo) {
+            Storage::disk('public')->delete($user->sim_photo);
+        }
+
+        $user->update([
+            'verification_status' => 'unverified',
+            'sim_photo' => null,
+            'verified_at' => null,
+        ]);
+
+        return back()->with('success', 'Verifikasi ditolak. Customer harus mengajukan ulang.');
     }
 }

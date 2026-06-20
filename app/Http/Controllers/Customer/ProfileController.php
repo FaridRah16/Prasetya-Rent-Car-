@@ -130,4 +130,48 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Foto profil berhasil dihapus');
     }
+
+    /**
+     * Submit account verification (phone number + SIM photo) for admin approval.
+     */
+    public function submitVerification(Request $request)
+    {
+        $user = Auth::user();
+
+        // Tidak perlu submit ulang jika sudah terverifikasi atau sedang menunggu.
+        if ($user->isVerified()) {
+            return back()->with('error', 'Akun Anda sudah terverifikasi');
+        }
+        if ($user->isPendingVerification()) {
+            return back()->with('error', 'Verifikasi Anda sedang menunggu konfirmasi admin');
+        }
+
+        $request->validate([
+            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'sim_photo' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+        ], [
+            'phone.required' => 'Nomor telepon harus diisi',
+            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
+            'sim_photo.required' => 'Foto SIM wajib diupload',
+            'sim_photo.image' => 'File harus berupa gambar',
+            'sim_photo.mimes' => 'Format gambar harus JPEG, JPG, atau PNG',
+            'sim_photo.max' => 'Ukuran gambar maksimal 2MB',
+        ]);
+
+        // Hapus foto SIM lama jika ada (mis. pengajuan ulang setelah ditolak)
+        if ($user->sim_photo) {
+            Storage::disk('public')->delete($user->sim_photo);
+        }
+
+        $simPath = $request->file('sim_photo')->store('sim_photos', 'public');
+
+        $user->update([
+            'phone' => $request->phone,
+            'sim_photo' => $simPath,
+            'verification_status' => 'pending',
+        ]);
+
+        return redirect()->route('customer.profile.edit')
+            ->with('success', 'Pengajuan verifikasi berhasil dikirim. Menunggu konfirmasi admin.');
+    }
 }

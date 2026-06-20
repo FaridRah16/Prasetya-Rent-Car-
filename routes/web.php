@@ -69,7 +69,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/users/{id}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('users.update');
     Route::delete('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('users.destroy');
-    
+    Route::post('/users/{id}/verify', [\App\Http\Controllers\Admin\UserController::class, 'verifyUser'])->name('users.verify');
+    Route::post('/users/{id}/reject-verification', [\App\Http\Controllers\Admin\UserController::class, 'rejectVerification'])->name('users.rejectVerification');
+
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports');
 });
@@ -92,6 +94,7 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.updatePassword');
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.deleteAvatar');
+    Route::post('/profile/verification', [ProfileController::class, 'submitVerification'])->name('profile.verification');
 });
 
 // Driver Routes

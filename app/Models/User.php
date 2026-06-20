@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'phone', 'whatsapp_number', 'avatar'])]
+#[Fillable(['name', 'email', 'password', 'role', 'phone', 'whatsapp_number', 'avatar', 'verification_status', 'sim_photo', 'verified_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,6 +28,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -86,5 +87,29 @@ class User extends Authenticatable
     public function isDriver(): bool
     {
         return $this->role === 'driver';
+    }
+
+    /**
+     * Check if the account has been verified by admin.
+     */
+    public function isVerified(): bool
+    {
+        return $this->verification_status === 'verified';
+    }
+
+    /**
+     * Check if the account verification is awaiting admin confirmation.
+     */
+    public function isPendingVerification(): bool
+    {
+        return $this->verification_status === 'pending';
+    }
+
+    /**
+     * Check if the account has not been verified yet.
+     */
+    public function isUnverified(): bool
+    {
+        return $this->verification_status === 'unverified';
     }
 }

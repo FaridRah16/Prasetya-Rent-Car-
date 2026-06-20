@@ -57,6 +57,7 @@
                             <th>Email</th>
                             <th>Telepon</th>
                             <th>Role</th>
+                            <th>Verifikasi</th>
                             <th>Terdaftar</th>
                             <th>Aksi</th>
                         </tr>
@@ -80,6 +81,19 @@
                                         <span class="badge bg-info">Driver</span>
                                     @else
                                         <span class="badge bg-primary">Customer</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($user->role === 'customer')
+                                        @if($user->verification_status === 'verified')
+                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Terverifikasi</span>
+                                        @elseif($user->verification_status === 'pending')
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Menunggu</span>
+                                        @else
+                                            <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Belum Terverifikasi</span>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">—</span>
                                     @endif
                                 </td>
                                 <td>{{ $user->created_at->format('d M Y') }}</td>

@@ -56,28 +56,35 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create Customers
+        // Sudah terverifikasi admin — dapat langsung memesan
         User::create([
             'name' => 'Siti Nurhaliza',
             'email' => 'siti@customer.com',
             'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08456789012',
+            'verification_status' => 'verified',
+            'verified_at' => now(),
         ]);
 
+        // Mengajukan verifikasi, menunggu konfirmasi admin
         User::create([
             'name' => 'Andi Pratama',
             'email' => 'andi@customer.com',
             'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08567890123',
+            'verification_status' => 'pending',
         ]);
 
+        // Belum terverifikasi — belum bisa memesan
         User::create([
             'name' => 'Dewi Lestari',
             'email' => 'dewi@customer.com',
             'password' => 'password', // Cast 'hashed' di model otomatis meng-hash password
             'role' => 'customer',
             'phone' => '08678901234',
+            'verification_status' => 'unverified',
         ]);
 
         // Create Cars

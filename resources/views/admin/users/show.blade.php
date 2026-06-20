@@ -62,6 +62,62 @@
             </div>
         </div>
 
+        @if($user->role === 'customer')
+            <!-- Verifikasi Akun -->
+            <div class="card mb-4 border-{{ $user->verification_status === 'verified' ? 'success' : ($user->verification_status === 'pending' ? 'warning' : 'secondary') }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-patch-check"></i> Verifikasi</h5>
+                    @if($user->verification_status === 'verified')
+                        <span class="badge bg-success">Terverifikasi</span>
+                    @elseif($user->verification_status === 'pending')
+                        <span class="badge bg-warning text-dark">Menunggu</span>
+                    @else
+                        <span class="badge bg-secondary">Belum Terverifikasi</span>
+                    @endif
+                </div>
+                <div class="card-body">
+                    @if($user->verified_at)
+                        <p class="small text-muted mb-2">
+                            <i class="bi bi-clock-history"></i> Diverifikasi: {{ $user->verified_at->format('d M Y H:i') }}
+                        </p>
+                    @endif
+
+                    @if($user->sim_photo)
+                        <p class="mb-1"><strong>Foto SIM:</strong></p>
+                        <a href="{{ asset('storage/' . $user->sim_photo) }}" target="_blank">
+                            <img src="{{ asset('storage/' . $user->sim_photo) }}"
+                                 alt="Foto SIM"
+                                 class="img-fluid rounded border mb-3"
+                                 style="max-height: 220px; width: 100%; object-fit: cover;">
+                        </a>
+                    @else
+                        <p class="text-muted small mb-3"><i class="bi bi-image"></i> Belum ada foto SIM diunggah.</p>
+                    @endif
+
+                    <div class="d-grid gap-2">
+                        @if($user->verification_status !== 'verified')
+                            <form method="POST" action="{{ route('admin.users.verify', $user->id) }}"
+                                  onsubmit="return confirm('Verifikasi akun customer ini?')">
+                                @csrf
+                                <button type="submit" class="btn btn-success w-100" {{ $user->sim_photo ? '' : 'disabled' }}>
+                                    <i class="bi bi-check-circle"></i> Verifikasi
+                                </button>
+                            </form>
+                        @endif
+                        @if($user->verification_status !== 'unverified')
+                            <form method="POST" action="{{ route('admin.users.rejectVerification', $user->id) }}"
+                                  onsubmit="return confirm('Tolak verifikasi? Customer harus mengajukan ulang.')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-danger w-100">
+                                    <i class="bi bi-x-circle"></i> Tolak Verifikasi
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Quick Actions -->
         <div class="card">
             <div class="card-header">
