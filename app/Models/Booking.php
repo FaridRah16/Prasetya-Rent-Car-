@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['user_id', 'car_id', 'driver_id', 'start_date', 'pickup_time', 'end_date', 'return_time', 'total_days', 'total_price', 'pickup_location', 'pickup_lat', 'pickup_lng', 'dropoff_location', 'dropoff_lat', 'dropoff_lng', 'status', 'payment_status', 'payment_proof', 'delivery_proof', 'notes'])]
 class Booking extends Model
@@ -50,11 +49,21 @@ class Booking extends Model
     }
 
     /**
-     * Get the review for the booking.
+     * Scope booking yang masih "menahan" sebuah slot (mobil/driver):
+     * 'confirmed' & 'ongoing', plus 'pending' yang belum kedaluwarsa (TTL).
+     * Pending yang sudah lewat batas waktu tidak lagi memblokir tanggal.
      */
-    public function review(): HasOne
+    public function scopeBlockingSlot($query)
     {
-        return $this->hasOne(Review::class);
+        $ttlHours = (int) config('business.pending_ttl_hours', 24);
+
+        return $query->where(function ($q) use ($ttlHours) {
+            $q->whereIn('status', ['confirmed', 'ongoing'])
+              ->orWhere(function ($q2) use ($ttlHours) {
+                  $q2->where('status', 'pending')
+                     ->where('created_at', '>=', now()->subHours($ttlHours));
+              });
+        });
     }
 
     /**

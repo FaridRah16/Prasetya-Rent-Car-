@@ -128,6 +128,7 @@ flowchart TD
 | Edit profil | `GET/PUT /customer/profile` | `Customer\ProfileController@edit/update` |
 | Ganti password | `GET/PUT /customer/profile/password` | `Customer\ProfileController@editPassword/updatePassword` |
 | Hapus avatar | `DELETE /customer/profile/avatar` | `Customer\ProfileController@deleteAvatar` |
+| Ajukan verifikasi akun | `POST /customer/profile/verification` | `Customer\ProfileController@submitVerification` |
 
 ### Admin
 | Use Case | Rute | Controller |
@@ -141,6 +142,8 @@ flowchart TD
 | Verifikasi pembayaran | `POST /admin/bookings/{id}/verify-payment` | `Admin\BookingController@verifyPayment` |
 | Tolak pembayaran | `POST /admin/bookings/{id}/reject-payment` | `Admin\BookingController@rejectPayment` |
 | CRUD user | `GET/POST/PUT/DELETE /admin/users...` | `Admin\UserController` |
+| Verifikasi akun user | `POST /admin/users/{id}/verify` | `Admin\UserController@verifyUser` |
+| Tolak verifikasi akun | `POST /admin/users/{id}/reject-verification` | `Admin\UserController@rejectVerification` |
 | Laporan | `GET /admin/reports` | `Admin\ReportController@index` |
 
 ### Driver

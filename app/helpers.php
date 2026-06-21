@@ -26,9 +26,9 @@ function formatWhatsAppNumber(?string $number): string
     if (str_starts_with($number, '0')) {
         $number = '62' . substr($number, 1);
     }
-    // If starts with 8 (missing country code), prepend 6
+    // If starts with 8 (missing country code & leading 0), prepend 62
     elseif (str_starts_with($number, '8')) {
-        $number = '6' . $number;
+        $number = '62' . $number;
     }
     // If already starts with 62, keep as is
 

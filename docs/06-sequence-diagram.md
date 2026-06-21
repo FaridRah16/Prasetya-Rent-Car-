@@ -41,7 +41,49 @@ sequenceDiagram
     end
 ```
 
-## 2. Membuat Booking (dengan proteksi race condition)
+## 2. Verifikasi Akun (Customer Ajukan, Admin Konfirmasi)
+
+```mermaid
+sequenceDiagram
+    actor C as Customer
+    actor A as Admin
+    participant PC as Customer\ProfileController
+    participant UC as Admin\UserController
+    participant S as Storage (public)
+    participant U as User Model
+
+    C->>PC: POST /customer/profile/verification (phone, sim_photo)
+    alt status verified / pending
+        PC-->>C: error 'sudah terverifikasi / menunggu konfirmasi'
+    else status unverified
+        PC->>PC: validate(phone angka, sim image max 2MB)
+        opt ada sim_photo lama
+            PC->>S: delete(sim_photo lama)
+        end
+        PC->>S: store('sim_photos')
+        S-->>PC: path
+        PC->>U: update(phone, sim_photo, verification_status=pending)
+        PC-->>C: 'Pengajuan dikirim, menunggu konfirmasi admin'
+    end
+
+    A->>UC: POST /admin/users/{id}/verify
+    UC->>U: findOrFail(id)
+    alt sim_photo kosong
+        UC-->>A: error 'user belum unggah SIM'
+    else ada sim_photo
+        UC->>U: update(verification_status=verified, verified_at=now)
+        UC-->>A: 'Akun berhasil diverifikasi'
+    end
+
+    opt admin menolak
+        A->>UC: POST /admin/users/{id}/reject-verification
+        UC->>S: delete(sim_photo)
+        UC->>U: update(verification_status=unverified, sim_photo=null, verified_at=null)
+        UC-->>A: 'Verifikasi ditolak'
+    end
+```
+
+## 3. Membuat Booking (dengan proteksi race condition)
 
 ```mermaid
 sequenceDiagram
@@ -56,6 +98,10 @@ sequenceDiagram
     C->>B: Isi form booking & submit
     B->>MW: POST /customer/bookings
     MW->>BC: store(Request)
+    BC->>BC: cek Auth::user()->isVerified()
+    alt belum verified
+        BC-->>C: redirect ke profil 'selesaikan verifikasi dahulu'
+    end
     BC->>BC: validate(input)
     BC->>BC: hitung pickup/return datetime
     BC->>BC: cek return > pickup
@@ -78,7 +124,7 @@ sequenceDiagram
     BC-->>B: redirect ke detail booking + pesan sukses
 ```
 
-## 3. Upload Bukti Bayar & Verifikasi Admin
+## 4. Upload Bukti Bayar & Verifikasi Admin
 
 ```mermaid
 sequenceDiagram
@@ -110,7 +156,7 @@ sequenceDiagram
     end
 ```
 
-## 4. Driver Mulai Tugas & Upload Bukti Pengantaran
+## 5. Driver Mulai Tugas & Upload Bukti Pengantaran
 
 ```mermaid
 sequenceDiagram
@@ -143,7 +189,7 @@ sequenceDiagram
     TC-->>D: 'Menunggu konfirmasi admin'
 ```
 
-## 5. Admin Tugaskan Driver
+## 6. Admin Tugaskan Driver
 
 ```mermaid
 sequenceDiagram
@@ -166,7 +212,7 @@ sequenceDiagram
     end
 ```
 
-## 6. Customer Batalkan Booking
+## 7. Customer Batalkan Booking
 
 ```mermaid
 sequenceDiagram

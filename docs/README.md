@@ -28,6 +28,9 @@ Stack teknologi: Laravel 13, PHP 8.3, Blade, MySQL, autentikasi session-based de
 | 5 | [05-activity-diagram.md](05-activity-diagram.md) | Activity Diagram alur utama |
 | 6 | [06-sequence-diagram.md](06-sequence-diagram.md) | Sequence Diagram interaksi sistem |
 | 7 | [07-class-diagram.md](07-class-diagram.md) | Class Diagram (Model & Controller) |
+| 8 | [08-transformasi-erd-lrs.md](08-transformasi-erd-lrs.md) | Transformasi ERD ke Logical Record Structure |
+| 9 | [09-logical-record-structure.md](09-logical-record-structure.md) | Logical Record Structure (LRS) |
+| 10 | [10-spesifikasi-database.md](10-spesifikasi-database.md) | Spesifikasi Database (kamus data) |
 
 ## Ringkasan Entitas
 

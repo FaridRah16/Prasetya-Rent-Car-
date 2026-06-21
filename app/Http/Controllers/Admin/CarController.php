@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCarRequest;
+use App\Http\Requests\UpdateCarRequest;
 use App\Models\Car;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,48 +48,13 @@ class CarController extends Controller
     /**
      * Store a newly created car.
      */
-    public function store(Request $request)
+    public function store(StoreCarRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'brand' => 'required|string|max:100',
-            'type' => 'required|string|max:100',
-            'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'color' => 'required|string|max:50',
-            'plate_number' => 'required|string|max:20|unique:cars,plate_number',
-            'price_per_day' => 'required|numeric|min:0',
-            'seats' => 'required|integer|min:1|max:20',
-            'status' => 'required|in:available,rented,maintenance',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'gallery' => 'nullable|array',
-            'gallery.*' => 'image|mimes:jpeg,png,jpg|max:2048',
-        ], [
-            'name.required' => 'Nama mobil harus diisi',
-            'brand.required' => 'Brand mobil harus diisi',
-            'type.required' => 'Tipe mobil harus diisi',
-            'year.required' => 'Tahun mobil harus diisi',
-            'year.integer' => 'Tahun harus berupa angka',
-            'year.min' => 'Tahun minimal 1900',
-            'year.max' => 'Tahun maksimal ' . (date('Y') + 1),
-            'color.required' => 'Warna mobil harus diisi',
-            'plate_number.required' => 'Nomor plat harus diisi',
-            'plate_number.unique' => 'Nomor plat sudah terdaftar',
-            'price_per_day.required' => 'Harga sewa harus diisi',
-            'price_per_day.numeric' => 'Harga harus berupa angka',
-            'seats.required' => 'Jumlah kursi harus diisi',
-            'seats.integer' => 'Jumlah kursi harus berupa angka',
-            'status.required' => 'Status mobil harus dipilih',
-            'image.image' => 'File harus berupa gambar',
-            'image.mimes' => 'Format gambar harus jpeg, png, atau jpg',
-            'image.max' => 'Ukuran gambar maksimal 2MB',
-            'gallery.array' => 'Format galeri harus berupa array',
-            'gallery.*.image' => 'File galeri harus berupa gambar',
-            'gallery.*.mimes' => 'Format gambar galeri harus jpeg, png, atau jpg',
-            'gallery.*.max' => 'Ukuran gambar galeri maksimal 2MB',
+        // Allow-list eksplisit (bukan except()) untuk mencegah mass-assignment.
+        $data = $request->only([
+            'name', 'brand', 'type', 'year', 'color', 'plate_number',
+            'price_per_day', 'seats', 'transmission', 'fuel', 'status', 'description',
         ]);
-
-        $data = $request->except(['image', 'gallery']);
 
         // Handle image upload
         if ($request->hasFile('image')) {
@@ -135,44 +102,15 @@ class CarController extends Controller
     /**
      * Update the specified car.
      */
-    public function update(Request $request, $id)
+    public function update(UpdateCarRequest $request, $id)
     {
         $car = Car::findOrFail($id);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'brand' => 'required|string|max:100',
-            'type' => 'required|string|max:100',
-            'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'color' => 'required|string|max:50',
-            'plate_number' => 'required|string|max:20|unique:cars,plate_number,' . $id,
-            'price_per_day' => 'required|numeric|min:0',
-            'seats' => 'required|integer|min:1|max:20',
-            'status' => 'required|in:available,rented,maintenance',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'gallery' => 'nullable|array',
-            'gallery.*' => 'image|mimes:jpeg,png,jpg|max:2048',
-        ], [
-            'name.required' => 'Nama mobil harus diisi',
-            'brand.required' => 'Brand mobil harus diisi',
-            'type.required' => 'Tipe mobil harus diisi',
-            'year.required' => 'Tahun mobil harus diisi',
-            'color.required' => 'Warna mobil harus diisi',
-            'plate_number.required' => 'Nomor plat harus diisi',
-            'plate_number.unique' => 'Nomor plat sudah terdaftar',
-            'price_per_day.required' => 'Harga sewa harus diisi',
-            'seats.required' => 'Jumlah kursi harus diisi',
-            'status.required' => 'Status mobil harus dipilih',
-            'image.image' => 'File harus berupa gambar',
-            'image.max' => 'Ukuran gambar maksimal 2MB',
-            'gallery.array' => 'Format galeri harus berupa array',
-            'gallery.*.image' => 'File galeri harus berupa gambar',
-            'gallery.*.mimes' => 'Format gambar galeri harus jpeg, png, atau jpg',
-            'gallery.*.max' => 'Ukuran gambar galeri maksimal 2MB',
+        // Allow-list eksplisit (bukan except()) untuk mencegah mass-assignment.
+        $data = $request->only([
+            'name', 'brand', 'type', 'year', 'color', 'plate_number',
+            'price_per_day', 'seats', 'transmission', 'fuel', 'status', 'description',
         ]);
-
-        $data = $request->except(['image', 'gallery']);
 
         // Handle image upload
         if ($request->hasFile('image')) {

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
@@ -60,16 +61,15 @@ class TaskController extends Controller
             ->where('status', 'confirmed')
             ->findOrFail($id);
 
-        $task->update(['status' => 'ongoing']);
+        DB::transaction(function () use ($task) {
+            $task->update(['status' => 'ongoing']);
 
-        // Set mobil ke 'rented' saat tugas dimulai
-        $task->car->update(['status' => 'rented']);
+            // Set mobil ke 'rented' saat tugas dimulai
+            $task->car->update(['status' => 'rented']);
 
-        // Set driver ke 'on_duty' saat tugas dimulai
-        $driver = Driver::where('user_id', Auth::id())->first();
-        if ($driver) {
-            $driver->update(['status' => 'on_duty']);
-        }
+            // Set driver ke 'on_duty' saat tugas dimulai
+            Driver::where('user_id', Auth::id())->update(['status' => 'on_duty']);
+        });
 
         return back()->with('success', 'Tugas dimulai. Selamat bertugas!');
     }
@@ -93,11 +93,12 @@ class TaskController extends Controller
             ->where('status', 'ongoing')
             ->findOrFail($id);
 
-        // Upload delivery proof
-        $proofPath = $request->file('delivery_proof')->store('delivery_proofs', 'public');
+        // Simpan ke disk privat 'local' (PII, tidak boleh diakses publik)
+        $proofPath = $request->file('delivery_proof')->store('delivery_proofs', 'local');
 
-        // Delete old delivery proof if exists
+        // Delete old delivery proof if exists (cek disk privat & legacy publik)
         if ($task->delivery_proof) {
+            Storage::disk('local')->delete($task->delivery_proof);
             Storage::disk('public')->delete($task->delivery_proof);
         }
 

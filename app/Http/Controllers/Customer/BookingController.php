@@ -41,13 +41,13 @@ class BookingController extends Controller
 
         $selectedCarId = $request->input('car_id');
         
-        // Get available cars
-        $cars = Car::where('status', 'available')->get();
+        // Mobil yang bisa dipesan: tersedia & sedang disewa (untuk tanggal lain).
+        // Mobil 'maintenance' dikecualikan. Bentrok tanggal divalidasi saat store().
+        $cars = Car::whereIn('status', ['available', 'rented'])->get();
         
-        // Get available drivers
-        $drivers = Driver::where('status', 'available')
-            ->with('user')
-            ->get();
+        // Tampilkan semua driver; ketersediaan untuk tanggal yang dipilih
+        // divalidasi saat store() lewat pengecekan bentrok jadwal (overlap).
+        $drivers = Driver::with('user')->get();
 
         return view('customer.bookings.create', compact('cars', 'drivers', 'selectedCarId'));
     }
@@ -116,10 +116,12 @@ class BookingController extends Controller
             // Lock baris mobil agar concurrent request menunggu
             $car = Car::lockForUpdate()->findOrFail($request->car_id);
 
-            // Cek ulang ketersediaan mobil di dalam lock
-            if ($car->status !== 'available') {
+            // Cek ulang di dalam lock: hanya mobil 'maintenance' yang dilarang.
+            // Mobil 'rented' tetap boleh dipesan untuk tanggal yang tidak bentrok
+            // (divalidasi oleh pengecekan overlap di bawah).
+            if ($car->status === 'maintenance') {
                 throw ValidationException::withMessages([
-                    'car_id' => 'Mobil tidak tersedia untuk disewa',
+                    'car_id' => 'Mobil sedang dalam perawatan dan tidak dapat disewa',
                 ]);
             }
 
@@ -128,7 +130,7 @@ class BookingController extends Controller
             //   A_start < B_end  AND  B_start < A_end
             // Disimpan sebagai DATETIME string (Y-m-d H:i:s) agar perbandingan akurat per jam.
             $overlapping = Booking::where('car_id', $request->car_id)
-                ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+                ->blockingSlot()
                 ->where(function ($query) use ($pickupDateTime, $returnDateTime) {
                     // Bangun datetime dari kolom tanggal + jam (fallback jam 00:00 jika NULL)
                     $query->whereRaw(
@@ -153,7 +155,7 @@ class BookingController extends Controller
             // Mencegah satu driver ditugaskan ke dua booking pada rentang waktu yang sama.
             if ($request->driver_id) {
                 $driverOverlap = Booking::where('driver_id', $request->driver_id)
-                    ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+                    ->blockingSlot()
                     ->where(function ($query) use ($pickupDateTime, $returnDateTime) {
                         $query->whereRaw(
                             "CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?",
@@ -232,15 +234,14 @@ class BookingController extends Controller
         $booking = Booking::where('user_id', Auth::id())->findOrFail($id);
 
         if ($request->hasFile('payment_proof')) {
-            // Delete old payment proof if exists
+            // Delete old payment proof if exists (cek disk privat & legacy publik)
             if ($booking->payment_proof) {
+                Storage::disk('local')->delete($booking->payment_proof);
                 Storage::disk('public')->delete($booking->payment_proof);
             }
 
-            // Store new payment proof
-            $file = $request->file('payment_proof');
-            $filename = 'payment_' . $booking->id . '_' . time() . '.' . $file->extension();
-            $path = $file->storeAs('payments', $filename, 'public');
+            // Simpan ke disk privat 'local' dengan nama acak (PII, bukan publik)
+            $path = $request->file('payment_proof')->store('payments', 'local');
 
             // Update booking
             $booking->update([

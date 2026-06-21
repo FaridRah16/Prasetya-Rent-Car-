@@ -76,10 +76,6 @@
                         </p>
                         <div class="row">
                             <div class="col-6">
-                                <small class="text-muted">Plat Nomor</small>
-                                <p class="mb-0 fw-bold">{{ $booking->car->plate_number }}</p>
-                            </div>
-                            <div class="col-6">
                                 <small class="text-muted">Kapasitas</small>
                                 <p class="mb-0 fw-bold">{{ $booking->car->seats }} Kursi</p>
                             </div>
@@ -217,8 +213,8 @@
                     <h5 class="mb-0"><i class="bi bi-image"></i> Bukti Pembayaran</h5>
                 </div>
                 <div class="card-body">
-                    <img src="{{ asset('storage/' . $booking->payment_proof) }}" 
-                         alt="Payment Proof" 
+                    <img src="{{ route('secure.payment', $booking->id) }}"
+                         alt="Payment Proof"
                          class="payment-proof-preview img-fluid">
                     <p class="mt-3 mb-0">
                         @if($booking->payment_status === 'paid')

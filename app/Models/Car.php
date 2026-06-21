@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['name', 'brand', 'type', 'year', 'color', 'plate_number', 'price_per_day', 'status', 'image', 'gallery', 'seats', 'description'])]
+#[Fillable(['name', 'brand', 'type', 'year', 'color', 'plate_number', 'price_per_day', 'status', 'image', 'gallery', 'seats', 'transmission', 'fuel', 'description'])]
 class Car extends Model
 {
     use HasFactory;
@@ -22,6 +23,17 @@ class Car extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Get the booking that is currently using this car (status ongoing).
+     * Used to display "Disewa s/d <tanggal>" in the public catalog.
+     */
+    public function activeBooking(): HasOne
+    {
+        return $this->hasOne(Booking::class)
+            ->where('status', 'ongoing')
+            ->latest('end_date');
     }
 
     /**

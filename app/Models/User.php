@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'phone', 'whatsapp_number', 'avatar', 'verification_status', 'sim_photo', 'verified_at'])]
+// CATATAN KEAMANAN: 'role', 'verification_status', dan 'verified_at' SENGAJA
+// tidak mass-assignable untuk mencegah privilege-escalation / self-verify.
+// Field tersebut hanya boleh di-set eksplisit (mis. $user->role = ...).
+#[Fillable(['name', 'email', 'password', 'phone', 'whatsapp_number', 'avatar', 'sim_photo'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -47,14 +50,6 @@ class User extends Authenticatable
     public function driver(): HasOne
     {
         return $this->hasOne(Driver::class);
-    }
-
-    /**
-     * Get the reviews for the user.
-     */
-    public function reviews(): HasMany
-    {
-        return $this->hasMany(Review::class);
     }
 
     /**

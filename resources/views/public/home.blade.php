@@ -439,7 +439,14 @@
                                 <div class="image-wrapper">
                                     <img src="{{ $car->image_url }}" alt="{{ $car->name }}">
                                 </div>
-                                <span class="badge bg-success" style="position: absolute; top: 0; right: 0; border-radius: 30px; padding: 6px 14px; font-weight: 600; font-size: 0.75rem; box-shadow: 0 4px 10px rgba(40,167,69,0.15);">Tersedia</span>
+                                @if($car->status === 'rented')
+                                    @php $rentedUntil = optional($car->activeBooking)->end_date; @endphp
+                                    <span class="badge bg-warning text-dark" style="position: absolute; top: 0; right: 0; border-radius: 30px; padding: 6px 14px; font-weight: 600; font-size: 0.75rem; box-shadow: 0 4px 10px rgba(255,193,7,0.25);">
+                                        {{ $rentedUntil ? 'Disewa s/d ' . $rentedUntil->format('d M Y') : 'Sedang Disewa' }}
+                                    </span>
+                                @else
+                                    <span class="badge bg-success" style="position: absolute; top: 0; right: 0; border-radius: 30px; padding: 6px 14px; font-weight: 600; font-size: 0.75rem; box-shadow: 0 4px 10px rgba(40,167,69,0.15);">Tersedia</span>
+                                @endif
                             </div>
                             <div class="mb-4">
                                 <h4 class="car-name-title mb-1">{{ $car->name }}</h4>
@@ -475,7 +482,7 @@
                                         </div>
                                         <div class="spec-text-details">
                                             <span class="spec-label">Transmisi</span>
-                                            <span class="spec-value">{{ in_array(strtolower($car->type), ['suv', 'mpv']) ? 'AUTOMATIC' : 'MANUAL/AUTO' }}</span>
+                                            <span class="spec-value">{{ strtoupper($car->transmission ?? (in_array(strtolower($car->type), ['suv', 'mpv']) ? 'AUTOMATIC' : 'MANUAL/AUTO')) }}</span>
                                         </div>
                                     </div>
                                     <!-- BAHAN BAKAR -->
@@ -485,7 +492,7 @@
                                         </div>
                                         <div class="spec-text-details">
                                             <span class="spec-label">Bahan Bakar</span>
-                                            <span class="spec-value">{{ str_contains(strtolower($car->name), 'innova') ? 'DIESEL' : 'BENSIN' }}</span>
+                                            <span class="spec-value">{{ strtoupper($car->fuel ?? (str_contains(strtolower($car->name), 'innova') ? 'DIESEL' : 'BENSIN')) }}</span>
                                         </div>
                                     </div>
                                     <!-- ASURANSI KENDARAAN -->

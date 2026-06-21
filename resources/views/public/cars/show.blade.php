@@ -447,9 +447,30 @@
         <div class="col-lg-6 ps-lg-5">
             <h2 class="car-voxy-title">{{ $car->name }}</h2>
             
-            <h3 class="fw-extrabold text-danger mb-4">
+            <h3 class="fw-extrabold text-danger mb-3">
                 Rp {{ number_format($car->price_per_day, 0, ',', '.') }} <span class="text-muted fs-6 font-weight-normal">/ Hari</span>
             </h3>
+
+            @php $rentedUntil = optional($car->activeBooking)->end_date; @endphp
+            <div class="mb-4">
+                @if($car->status === 'rented')
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+                        <i class="bi bi-clock-history"></i>
+                        {{ $rentedUntil ? 'Disewa s/d ' . $rentedUntil->format('d M Y') : 'Sedang Disewa' }}
+                    </span>
+                    <p class="text-muted small mt-2 mb-0">
+                        <i class="bi bi-info-circle"></i> Unit sedang disewa. Anda tetap dapat memesan untuk tanggal lain yang tersedia.
+                    </p>
+                @elseif($car->status === 'maintenance')
+                    <span class="badge bg-secondary rounded-pill px-3 py-2">
+                        <i class="bi bi-tools"></i> Dalam Perawatan
+                    </span>
+                @else
+                    <span class="badge bg-success rounded-pill px-3 py-2">
+                        <i class="bi bi-check-circle-fill"></i> Tersedia
+                    </span>
+                @endif
+            </div>
 
             <div class="spec-header-title">Spesifikasi :</div>
 
@@ -481,7 +502,7 @@
                     </div>
                     <div class="spec-text-details-show">
                         <span class="spec-label">Transmisi</span>
-                        <span class="spec-value">{{ in_array(strtolower($car->type), ['suv', 'mpv']) ? 'AUTOMATIC' : 'MANUAL/AUTO' }}</span>
+                        <span class="spec-value">{{ strtoupper($car->transmission ?? (in_array(strtolower($car->type), ['suv', 'mpv']) ? 'AUTOMATIC' : 'MANUAL/AUTO')) }}</span>
                     </div>
                 </div>
                 <!-- BAHAN BAKAR -->
@@ -491,7 +512,7 @@
                     </div>
                     <div class="spec-text-details-show">
                         <span class="spec-label">Bahan Bakar</span>
-                        <span class="spec-value">{{ str_contains(strtolower($car->name), 'innova') ? 'DIESEL' : 'BENSIN' }}</span>
+                        <span class="spec-value">{{ strtoupper($car->fuel ?? (str_contains(strtolower($car->name), 'innova') ? 'DIESEL' : 'BENSIN')) }}</span>
                     </div>
                 </div>
                 <!-- ASURANSI KENDARAAN -->
@@ -528,7 +549,7 @@
                 <p class="action-prompt-text">Hubungi kami sekarang juga untuk mendapatkan informasi lebih lanjut dan detail ketersediaan kendaraan ini.</p>
                 
                 <div class="d-flex gap-3 flex-wrap mt-3">
-                    @if($car->status === 'available')
+                    @if($car->status !== 'maintenance')
                         @auth
                             <a href="{{ route('customer.bookings.create', ['car_id' => $car->id]) }}" class="btn-book-premium">
                                 <i class="bi bi-calendar-check-fill"></i> Sewa Sekarang
@@ -540,11 +561,11 @@
                         @endauth
                     @else
                         <button class="btn btn-secondary rounded-pill px-4 py-3 fw-bold text-uppercase fs-7" disabled>
-                            <i class="bi bi-exclamation-octagon-fill"></i> Sedang Disewa
+                            <i class="bi bi-exclamation-octagon-fill"></i> Sedang Perawatan
                         </button>
                     @endif
                     
-                    <a href="https://wa.me/628123456789?text=Halo%20Prasetya%20RentCar,%20saya%20tertarik%20menyewa%20mobil%20{{ urlencode($car->name) }}" target="_blank" class="btn-orange-pill">
+                    <a href="https://wa.me/{{ config('business.whatsapp') }}?text=Halo%20Prasetya%20RentCar,%20saya%20tertarik%20menyewa%20mobil%20{{ urlencode($car->name) }}" target="_blank" class="btn-orange-pill">
                         Hubungi Kami <i class="bi bi-whatsapp"></i>
                     </a>
                 </div>

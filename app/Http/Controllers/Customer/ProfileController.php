@@ -158,18 +158,21 @@ class ProfileController extends Controller
             'sim_photo.max' => 'Ukuran gambar maksimal 2MB',
         ]);
 
-        // Hapus foto SIM lama jika ada (mis. pengajuan ulang setelah ditolak)
+        // Hapus foto SIM lama jika ada (cek disk privat & legacy publik)
         if ($user->sim_photo) {
+            Storage::disk('local')->delete($user->sim_photo);
             Storage::disk('public')->delete($user->sim_photo);
         }
 
-        $simPath = $request->file('sim_photo')->store('sim_photos', 'public');
+        // Simpan ke disk privat 'local' (PII, tidak boleh diakses publik)
+        $simPath = $request->file('sim_photo')->store('sim_photos', 'local');
 
-        $user->update([
+        $user->fill([
             'phone' => $request->phone,
             'sim_photo' => $simPath,
-            'verification_status' => 'pending',
         ]);
+        $user->verification_status = 'pending'; // di-set eksplisit (tidak mass-assignable)
+        $user->save();
 
         return redirect()->route('customer.profile.edit')
             ->with('success', 'Pengajuan verifikasi berhasil dikirim. Menunggu konfirmasi admin.');

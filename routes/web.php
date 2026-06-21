@@ -7,11 +7,15 @@ use App\Http\Controllers\Customer\DashboardController as CustomerDashboardContro
 use App\Http\Controllers\Customer\ProfileController;
 use App\Http\Controllers\Driver\DashboardController as DriverDashboardController;
 use App\Http\Controllers\Public\CarController;
+use App\Http\Controllers\SecureFileController;
 use Illuminate\Support\Facades\Route;
 
 // Public Routes
 Route::get('/', function () {
-    $featuredCars = \App\Models\Car::where('status', 'available')
+    // Selaras dengan katalog: tampilkan mobil tersedia & yang sedang disewa
+    // (sembunyikan hanya yang 'maintenance').
+    $featuredCars = \App\Models\Car::whereIn('status', ['available', 'rented'])
+        ->with('activeBooking')
         ->orderBy('created_at', 'desc')
         ->take(6)
         ->get();
@@ -20,6 +24,13 @@ Route::get('/', function () {
 
 Route::get('/cars', [CarController::class, 'index'])->name('cars.index');
 Route::get('/cars/{id}', [CarController::class, 'show'])->name('cars.show');
+
+// Berkas PII (foto SIM, bukti bayar/pengantaran) disajikan ber-otorisasi.
+Route::middleware('auth')->prefix('secure')->name('secure.')->group(function () {
+    Route::get('/users/{id}/sim', [SecureFileController::class, 'sim'])->name('sim');
+    Route::get('/bookings/{id}/payment', [SecureFileController::class, 'payment'])->name('payment');
+    Route::get('/bookings/{id}/delivery', [SecureFileController::class, 'delivery'])->name('delivery');
+});
 
 Route::get('/about', function () {
     return view('public.about');

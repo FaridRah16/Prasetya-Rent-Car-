@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Driver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 
@@ -78,23 +79,26 @@ class UserController extends Controller
             'license_number.unique' => 'Nomor SIM sudah terdaftar',
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'whatsapp_number' => $request->whatsapp_number,
-            'password' => $request->password, // Cast 'hashed' di model otomatis meng-hash password
-            'role' => $request->role,
-        ]);
-
-        // If role is driver, create driver record
-        if ($request->role === 'driver') {
-            Driver::create([
-                'user_id' => $user->id,
-                'license_number' => $request->license_number,
-                'status' => 'available',
+        DB::transaction(function () use ($request) {
+            $user = new User([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'whatsapp_number' => $request->whatsapp_number,
+                'password' => $request->password, // Cast 'hashed' di model otomatis meng-hash password
             ]);
-        }
+            $user->role = $request->role; // di-set eksplisit (role tidak mass-assignable)
+            $user->save();
+
+            // If role is driver, create driver record
+            if ($request->role === 'driver') {
+                Driver::create([
+                    'user_id' => $user->id,
+                    'license_number' => $request->license_number,
+                    'status' => 'available',
+                ]);
+            }
+        });
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil ditambahkan');
@@ -149,42 +153,44 @@ class UserController extends Controller
             'license_number.required_if' => 'Nomor SIM harus diisi untuk driver',
         ]);
 
-        $data = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'whatsapp_number' => $request->whatsapp_number,
-            'role' => $request->role,
-        ];
+        DB::transaction(function () use ($request, $user) {
+            $user->fill([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'whatsapp_number' => $request->whatsapp_number,
+            ]);
+            $user->role = $request->role; // di-set eksplisit (role tidak mass-assignable)
 
-        // Update password if provided
-        if ($request->filled('password')) {
-            $data['password'] = $request->password; // Cast 'hashed' di model otomatis meng-hash password
-        }
+            // Update password if provided
+            if ($request->filled('password')) {
+                $user->password = $request->password; // Cast 'hashed' di model otomatis meng-hash password
+            }
 
-        $user->update($data);
+            $user->save();
 
-        // Handle driver record
-        if ($request->role === 'driver') {
-            if ($user->driver) {
-                // Update existing driver
-                $user->driver->update([
-                    'license_number' => $request->license_number,
-                ]);
+            // Handle driver record
+            if ($request->role === 'driver') {
+                if ($user->driver) {
+                    // Update existing driver
+                    $user->driver->update([
+                        'license_number' => $request->license_number,
+                    ]);
+                } else {
+                    // Create new driver record
+                    Driver::create([
+                        'user_id' => $user->id,
+                        'license_number' => $request->license_number,
+                        'status' => 'available',
+                    ]);
+                }
             } else {
-                // Create new driver record
-                Driver::create([
-                    'user_id' => $user->id,
-                    'license_number' => $request->license_number,
-                    'status' => 'available',
-                ]);
+                // Delete driver record if role changed from driver
+                if ($user->driver) {
+                    $user->driver->delete();
+                }
             }
-        } else {
-            // Delete driver record if role changed from driver
-            if ($user->driver) {
-                $user->driver->delete();
-            }
-        }
+        });
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User berhasil diupdate');
@@ -220,6 +226,7 @@ class UserController extends Controller
 
         // Hapus foto SIM dari storage jika ada
         if ($user->sim_photo) {
+            Storage::disk('local')->delete($user->sim_photo);
             Storage::disk('public')->delete($user->sim_photo);
         }
 
@@ -245,10 +252,10 @@ class UserController extends Controller
             return back()->with('error', 'User belum mengunggah foto SIM, tidak dapat diverifikasi');
         }
 
-        $user->update([
-            'verification_status' => 'verified',
-            'verified_at' => now(),
-        ]);
+        // di-set eksplisit (field verifikasi tidak mass-assignable)
+        $user->verification_status = 'verified';
+        $user->verified_at = now();
+        $user->save();
 
         return back()->with('success', 'Akun ' . $user->name . ' berhasil diverifikasi');
     }
@@ -262,14 +269,15 @@ class UserController extends Controller
 
         // Hapus foto SIM agar customer mengunggah ulang
         if ($user->sim_photo) {
+            Storage::disk('local')->delete($user->sim_photo);
             Storage::disk('public')->delete($user->sim_photo);
         }
 
-        $user->update([
-            'verification_status' => 'unverified',
-            'sim_photo' => null,
-            'verified_at' => null,
-        ]);
+        // di-set eksplisit (field verifikasi tidak mass-assignable)
+        $user->verification_status = 'unverified';
+        $user->sim_photo = null;
+        $user->verified_at = null;
+        $user->save();
 
         return back()->with('success', 'Verifikasi ditolak. Customer harus mengajukan ulang.');
     }

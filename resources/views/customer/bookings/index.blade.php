@@ -32,8 +32,7 @@
                             <tr>
                                 <td>#{{ $booking->id }}</td>
                                 <td>
-                                    <strong>{{ $booking->car->name }}</strong><br>
-                                    <small class="text-muted">{{ $booking->car->plate_number }}</small>
+                                    <strong>{{ $booking->car->name }}</strong>
                                 </td>
                                 <td>
                                     <small class="text-muted">Mulai:</small> {{ $booking->start_date->format('d/m/Y') }}<br>

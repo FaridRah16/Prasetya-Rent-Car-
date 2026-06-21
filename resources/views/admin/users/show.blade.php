@@ -84,8 +84,8 @@
 
                     @if($user->sim_photo)
                         <p class="mb-1"><strong>Foto SIM:</strong></p>
-                        <a href="{{ asset('storage/' . $user->sim_photo) }}" target="_blank">
-                            <img src="{{ asset('storage/' . $user->sim_photo) }}"
+                        <a href="{{ route('secure.sim', $user->id) }}" target="_blank">
+                            <img src="{{ route('secure.sim', $user->id) }}"
                                  alt="Foto SIM"
                                  class="img-fluid rounded border mb-3"
                                  style="max-height: 220px; width: 100%; object-fit: cover;">

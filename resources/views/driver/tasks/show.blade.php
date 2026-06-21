@@ -286,8 +286,8 @@
                             <i class="bi bi-check-circle"></i> <strong>Bukti pengantaran sudah dikirim</strong>
                         </div>
                         <div class="mb-3">
-                            <img src="{{ asset('storage/' . $task->delivery_proof) }}" 
-                                 alt="Bukti Pengantaran" 
+                            <img src="{{ route('secure.delivery', $task->id) }}"
+                                 alt="Bukti Pengantaran"
                                  class="img-fluid rounded" 
                                  style="max-height: 200px; width: 100%; object-fit: cover;">
                         </div>

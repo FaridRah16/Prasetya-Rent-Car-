@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Driver;
 use App\Models\Car;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
@@ -71,30 +72,43 @@ class BookingController extends Controller
             return back()->with('error', 'Status booking yang sudah selesai atau dibatalkan tidak dapat diubah lagi');
         }
 
-        $booking->update(['status' => $request->status]);
+        DB::transaction(function () use ($booking, $request, $oldStatus) {
+            $booking->update(['status' => $request->status]);
 
-        // Update car status based on booking status
-        if ($request->status === 'completed' || $request->status === 'cancelled') {
-            $booking->car->update(['status' => 'available']);
-            
-            // Update driver status if there's a driver
-            if ($booking->driver_id) {
-                $driver = Driver::where('user_id', $booking->driver_id)->first();
-                if ($driver) {
-                    $driver->update(['status' => 'available']);
+            // Update status mobil & driver mengikuti status booking
+            if ($request->status === 'completed' || $request->status === 'cancelled') {
+                // Bebaskan mobil HANYA jika tidak ada booking lain yang masih
+                // benar-benar memakainya (status 'ongoing'). Booking masa depan
+                // (confirmed) tidak boleh menahan mobil sebagai 'rented'.
+                $carStillInUse = Booking::where('car_id', $booking->car_id)
+                    ->where('id', '!=', $booking->id)
+                    ->where('status', 'ongoing')
+                    ->exists();
+                if (! $carStillInUse) {
+                    $booking->car->update(['status' => 'available']);
+                }
+
+                // Bebaskan driver HANYA jika tidak sedang bertugas di booking lain.
+                if ($booking->driver_id) {
+                    $driverStillOnDuty = Booking::where('driver_id', $booking->driver_id)
+                        ->where('id', '!=', $booking->id)
+                        ->where('status', 'ongoing')
+                        ->exists();
+                    if (! $driverStillOnDuty) {
+                        Driver::where('user_id', $booking->driver_id)
+                            ->update(['status' => 'available']);
+                    }
+                }
+            } elseif ($request->status === 'ongoing' && $oldStatus !== 'ongoing') {
+                $booking->car->update(['status' => 'rented']);
+
+                // Set driver ke 'on_duty' jika ada driver yang ditugaskan
+                if ($booking->driver_id) {
+                    Driver::where('user_id', $booking->driver_id)
+                        ->update(['status' => 'on_duty']);
                 }
             }
-        } elseif ($request->status === 'ongoing' && $oldStatus !== 'ongoing') {
-            $booking->car->update(['status' => 'rented']);
-            
-            // Set driver ke 'on_duty' jika ada driver yang ditugaskan
-            if ($booking->driver_id) {
-                $driver = Driver::where('user_id', $booking->driver_id)->first();
-                if ($driver) {
-                    $driver->update(['status' => 'on_duty']);
-                }
-            }
-        }
+        });
 
         return back()->with('success', 'Status booking berhasil diupdate');
     }
@@ -113,6 +127,22 @@ class BookingController extends Controller
         // Tidak bisa menugaskan driver ke booking yang sudah selesai/dibatalkan.
         if (in_array($booking->status, ['completed', 'cancelled'])) {
             return back()->with('error', 'Tidak dapat menugaskan driver pada booking yang sudah selesai atau dibatalkan');
+        }
+
+        // Cegah double-booking driver: pastikan driver tidak punya tugas lain
+        // yang bertumpang-tindih dengan rentang waktu booking ini.
+        $pickup = $booking->start_date->format('Y-m-d') . ' ' . ($booking->pickup_time ?? '00:00:00');
+        $return = $booking->end_date->format('Y-m-d') . ' ' . ($booking->return_time ?? '00:00:00');
+
+        $driverBusy = Booking::where('driver_id', $request->driver_id)
+            ->where('id', '!=', $booking->id)
+            ->blockingSlot()
+            ->whereRaw("CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?", [$return])
+            ->whereRaw("CONCAT(end_date, ' ', COALESCE(return_time, '00:00:00')) > ?", [$pickup])
+            ->exists();
+
+        if ($driverBusy) {
+            return back()->with('error', 'Driver tersebut sudah memiliki tugas pada rentang tanggal booking ini. Silakan pilih driver lain.');
         }
 
         // Release old driver if exists

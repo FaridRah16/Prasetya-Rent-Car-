@@ -109,6 +109,33 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Transmisi <span class="text-danger">*</span></label>
+                            <select class="form-select @error('transmission') is-invalid @enderror" name="transmission" required>
+                                <option value="">Pilih Transmisi</option>
+                                <option value="Manual" {{ old('transmission') == 'Manual' ? 'selected' : '' }}>Manual</option>
+                                <option value="Automatic" {{ old('transmission') == 'Automatic' ? 'selected' : '' }}>Automatic</option>
+                                <option value="CVT" {{ old('transmission') == 'CVT' ? 'selected' : '' }}>CVT</option>
+                            </select>
+                            @error('transmission')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Bahan Bakar <span class="text-danger">*</span></label>
+                            <select class="form-select @error('fuel') is-invalid @enderror" name="fuel" required>
+                                <option value="">Pilih Bahan Bakar</option>
+                                <option value="Bensin" {{ old('fuel') == 'Bensin' ? 'selected' : '' }}>Bensin</option>
+                                <option value="Diesel" {{ old('fuel') == 'Diesel' ? 'selected' : '' }}>Diesel</option>
+                                <option value="Hybrid" {{ old('fuel') == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
+                                <option value="Listrik" {{ old('fuel') == 'Listrik' ? 'selected' : '' }}>Listrik</option>
+                            </select>
+                            @error('fuel')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </div>

@@ -30,11 +30,46 @@ flowchart TD
     O --> Z
 ```
 
-## 2. Membuat Booking (Customer)
+## 2. Verifikasi Akun (Customer & Admin)
 
 ```mermaid
 flowchart TD
-    A([Mulai]) --> B[Buka form Buat Booking]
+    subgraph Customer
+        A([Mulai]) --> B[Buka halaman Profil]
+        B --> C{verification_status?}
+        C -->|verified| D[Sudah terverifikasi<br/>tidak perlu aksi]
+        C -->|pending| E[Menunggu konfirmasi admin]
+        C -->|unverified| F[Isi nomor telepon<br/>+ upload foto SIM]
+        F --> G{Validasi:<br/>phone angka, SIM image max 2MB?}
+        G -->|Gagal| F
+        G -->|Lolos| H[Hapus foto SIM lama jika ada]
+        H --> I[Simpan sim_photo ke storage/sim_photos<br/>set verification_status=pending]
+        I --> E
+    end
+    subgraph Admin
+        E --> J[Buka detail user]
+        J --> K{Keputusan admin}
+        K -->|Verifikasi| L{Ada sim_photo?}
+        L -->|Tidak| M[Error: user belum unggah SIM]
+        L -->|Ya| N[verification_status=verified<br/>set verified_at=now]
+        N --> O[Akun dapat memesan]
+        K -->|Tolak| P[Hapus sim_photo<br/>verification_status=unverified<br/>verified_at=null]
+        P --> Q[Customer ajukan ulang]
+        Q --> F
+    end
+    D --> Z([Selesai])
+    O --> Z
+    M --> J
+```
+
+## 3. Membuat Booking (Customer)
+
+```mermaid
+flowchart TD
+    A([Mulai]) --> A1{Akun verified?}
+    A1 -->|Tidak| A2[Redirect ke Profil:<br/>selesaikan verifikasi dahulu]
+    A2 --> Z2([Selesai])
+    A1 -->|Ya| B[Buka form Buat Booking]
     B --> C[Pilih mobil, tanggal, jam,<br/>lokasi jemput/antar, driver opsional]
     C --> C2[Pilih lokasi via peta - opsional<br/>set lat/lng]
     C2 --> D[Submit]
@@ -63,7 +98,7 @@ flowchart TD
     Q --> Z
 ```
 
-## 3. Pembayaran & Verifikasi
+## 4. Pembayaran & Verifikasi
 
 ```mermaid
 flowchart TD
@@ -92,7 +127,7 @@ flowchart TD
     L --> I
 ```
 
-## 4. Pelaksanaan Tugas (Driver)
+## 5. Pelaksanaan Tugas (Driver)
 
 ```mermaid
 flowchart TD
@@ -113,7 +148,7 @@ flowchart TD
     M --> Z([Selesai])
 ```
 
-## 5. Update Status Booking oleh Admin
+## 6. Update Status Booking oleh Admin
 
 ```mermaid
 flowchart TD

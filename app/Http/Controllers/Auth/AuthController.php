@@ -87,13 +87,14 @@ class AuthController extends Controller
             'password.symbols' => 'Password harus mengandung simbol (contoh: !@#$%)',
         ]);
 
-        $user = User::create([
+        $user = new User([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => $request->password, // Cast 'hashed' di model otomatis meng-hash password
-            'role' => 'customer', // Default role is customer
         ]);
+        $user->role = 'customer'; // di-set eksplisit (role tidak mass-assignable)
+        $user->save();
 
         Auth::login($user);
 

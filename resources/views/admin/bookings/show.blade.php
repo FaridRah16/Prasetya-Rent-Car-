@@ -257,8 +257,8 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <img src="{{ asset('storage/' . $booking->payment_proof) }}" 
-                             alt="Payment Proof" 
+                        <img src="{{ route('secure.payment', $booking->id) }}"
+                             alt="Payment Proof"
                              class="payment-proof-img img-fluid">
                     </div>
 
@@ -306,8 +306,8 @@
                         <i class="bi bi-info-circle"></i> Driver telah mengirim bukti pengantaran. Silakan periksa dan selesaikan pemesanan jika sudah sesuai.
                     </div>
                     <div class="mb-3">
-                        <img src="{{ asset('storage/' . $booking->delivery_proof) }}" 
-                             alt="Bukti Pengantaran" 
+                        <img src="{{ route('secure.delivery', $booking->id) }}"
+                             alt="Bukti Pengantaran"
                              class="payment-proof-img img-fluid">
                     </div>
 

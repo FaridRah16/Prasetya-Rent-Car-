@@ -106,6 +106,32 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Transmisi <span class="text-danger">*</span></label>
+                            <select class="form-select @error('transmission') is-invalid @enderror" name="transmission" required>
+                                <option value="">Pilih Transmisi</option>
+                                @foreach(['Manual', 'Automatic', 'CVT'] as $opt)
+                                    <option value="{{ $opt }}" {{ old('transmission', $car->transmission) == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                            @error('transmission')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Bahan Bakar <span class="text-danger">*</span></label>
+                            <select class="form-select @error('fuel') is-invalid @enderror" name="fuel" required>
+                                <option value="">Pilih Bahan Bakar</option>
+                                @foreach(['Bensin', 'Diesel', 'Hybrid', 'Listrik'] as $opt)
+                                    <option value="{{ $opt }}" {{ old('fuel', $car->fuel) == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                            @error('fuel')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </div>

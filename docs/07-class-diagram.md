@@ -14,9 +14,12 @@ classDiagram
         +string email
         +string password
         +string role
+        +string verification_status
         +string phone
         +string whatsapp_number
         +string avatar
+        +string sim_photo
+        +datetime verified_at
         +bookings() HasMany
         +driver() HasOne
         +reviews() HasMany
@@ -24,6 +27,9 @@ classDiagram
         +isAdmin() bool
         +isCustomer() bool
         +isDriver() bool
+        +isVerified() bool
+        +isPendingVerification() bool
+        +isUnverified() bool
     }
 
     class Car {
@@ -169,6 +175,8 @@ classDiagram
         +edit(id)
         +update(Request, id)
         +destroy(id)
+        +verifyUser(id)
+        +rejectVerification(id)
     }
     class AdminReportController {
         +index()
@@ -191,6 +199,7 @@ classDiagram
         +editPassword()
         +updatePassword(Request)
         +deleteAvatar()
+        +submitVerification(Request)
     }
 
     class DriverDashboardController {
@@ -227,7 +236,9 @@ classDiagram
     }
 
     class CustomerBookingController
+    class CustomerProfileController
     class AdminBookingController
+    class AdminUserController
     class DriverTaskController
     class Booking
     class Car
@@ -235,12 +246,15 @@ classDiagram
     class User
 
     RoleMiddleware ..> User : cek role
+    CustomerBookingController ..> User : cek isVerified() sebelum booking
     CustomerBookingController ..> Booking : create/update
     CustomerBookingController ..> Car : lock & cek status
     CustomerBookingController ..> Driver : cek ketersediaan
+    CustomerProfileController ..> User : submit SIM & set status pending
     AdminBookingController ..> Booking : updateStatus/verify
     AdminBookingController ..> Car : ubah status
     AdminBookingController ..> Driver : assign/release
+    AdminUserController ..> User : verifyUser/rejectVerification
     DriverTaskController ..> Booking : start/complete
     DriverTaskController ..> Car : set rented
     DriverTaskController ..> Driver : set on_duty
@@ -254,3 +268,9 @@ classDiagram
 - `Car.gallery` dan `Booking` tanggal/harga menggunakan **cast** (`array`, `date`, `decimal:2`).
 - Otorisasi peran disentralisasi pada `RoleMiddleware` yang didaftarkan sebagai alias `role`.
 - Password otomatis di-hash melalui cast `hashed` pada model `User`.
+- **Verifikasi akun**: `User.verification_status` berstatus `unverified` → `pending` → `verified`.
+  Customer mengunggah foto SIM via `CustomerProfileController.submitVerification()` (status
+  menjadi `pending`), lalu admin menyetujui (`AdminUserController.verifyUser()`, set
+  `verified_at`) atau menolak (`AdminUserController.rejectVerification()`, hapus SIM &
+  kembali ke `unverified`). Customer **wajib** berstatus `verified` (`isVerified()`) sebelum
+  dapat membuat booking.

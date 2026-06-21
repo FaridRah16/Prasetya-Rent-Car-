@@ -25,3 +25,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Dev scratch / screenshots (jangan di-commit)
+/screenshot_*.png
+/plan.md
+/PROGRESS.md
+/TASK_9_SUMMARY.md

@@ -13,7 +13,7 @@ class CarController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Car::query();
+        $query = Car::query()->with('activeBooking');
 
         // Filter by brand
         if ($request->filled('brand')) {
@@ -30,8 +30,10 @@ class CarController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        // Filter by status (only show available cars)
-        $query->where('status', 'available');
+        // Tampilkan mobil tersedia & yang sedang disewa (sembunyikan hanya yang maintenance).
+        // Mobil 'rented' tetap muncul agar customer melihat seluruh pilihan dan bisa
+        // memesan untuk tanggal lain; ketersediaan tanggal divalidasi saat booking.
+        $query->whereIn('status', ['available', 'rented']);
 
         // Sort by price
         if ($request->filled('sort')) {
@@ -58,7 +60,7 @@ class CarController extends Controller
      */
     public function show($id)
     {
-        $car = Car::findOrFail($id);
+        $car = Car::with('activeBooking')->findOrFail($id);
         return view('public.cars.show', compact('car'));
     }
 }
