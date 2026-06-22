@@ -131,7 +131,7 @@
                             <p class="mb-0">
                                 <strong><i class="bi bi-whatsapp text-success"></i> WhatsApp:</strong><br>
                                 <a href="https://wa.me/{{ formatWhatsAppNumber($task->user->whatsapp_number) }}" 
-                                   target="_blank" 
+                                   target="_blank" rel="noopener noreferrer" 
                                    class="text-decoration-none text-success">
                                     {{ $task->user->whatsapp_number }}
                                 </a>
@@ -231,7 +231,7 @@
                         <h6 class="mb-1"><i class="bi bi-geo-alt-fill text-success"></i> Lokasi Penjemputan</h6>
                         <p class="mb-1 text-muted">{{ $task->pickup_location }}</p>
                         @if($task->pickup_lat && $task->pickup_lng)
-                            <a href="https://www.google.com/maps?q={{ $task->pickup_lat }},{{ $task->pickup_lng }}" target="_blank" class="small">
+                            <a href="https://www.google.com/maps?q={{ $task->pickup_lat }},{{ $task->pickup_lng }}" target="_blank" rel="noopener noreferrer" class="small">
                                 <i class="bi bi-map"></i> Lihat di Google Maps
                             </a>
                         @endif
@@ -240,7 +240,7 @@
                         <h6 class="mb-1"><i class="bi bi-geo-fill text-danger"></i> Lokasi Pengantaran</h6>
                         <p class="mb-1 text-muted">{{ $task->dropoff_location }}</p>
                         @if($task->dropoff_lat && $task->dropoff_lng)
-                            <a href="https://www.google.com/maps?q={{ $task->dropoff_lat }},{{ $task->dropoff_lng }}" target="_blank" class="small">
+                            <a href="https://www.google.com/maps?q={{ $task->dropoff_lat }},{{ $task->dropoff_lng }}" target="_blank" rel="noopener noreferrer" class="small">
                                 <i class="bi bi-map"></i> Lihat di Google Maps
                             </a>
                         @endif
@@ -338,7 +338,7 @@
                     <i class="bi bi-telephone-fill"></i> Telepon
                 </a>
                 <a href="https://wa.me/{{ formatWhatsAppNumber($task->user->whatsapp_number ?: $task->user->phone) }}" 
-                   target="_blank" 
+                   target="_blank" rel="noopener noreferrer" 
                    class="btn btn-outline-success">
                     <i class="bi bi-whatsapp"></i> WhatsApp
                 </a>

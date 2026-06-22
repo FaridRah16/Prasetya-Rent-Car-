@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -49,36 +50,8 @@ class UserController extends Controller
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
-            'email' => 'required|email|unique:users,email',
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
-            'role' => 'required|in:admin,customer,driver',
-            'license_number' => 'required_if:role,driver|nullable|string|unique:drivers,license_number',
-        ], [
-            'name.required' => 'Nama harus diisi',
-            'name.regex' => 'Nama hanya boleh mengandung huruf',
-            'email.required' => 'Email harus diisi',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah terdaftar',
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
-            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
-            'password.required' => 'Password harus diisi',
-            'password.min' => 'Password minimal 8 karakter',
-            'password.confirmed' => 'Konfirmasi password tidak cocok',
-            'password.letters' => 'Password harus mengandung huruf',
-            'password.numbers' => 'Password harus mengandung angka',
-            'password.symbols' => 'Password harus mengandung simbol',
-            'role.required' => 'Role harus dipilih',
-            'license_number.required_if' => 'Nomor SIM harus diisi untuk driver',
-            'license_number.unique' => 'Nomor SIM sudah terdaftar',
-        ]);
-
         DB::transaction(function () use ($request) {
             $user = new User([
                 'name' => $request->name,
@@ -125,33 +98,9 @@ class UserController extends Controller
     /**
      * Update the specified user.
      */
-    public function update(Request $request, $id)
+    public function update(UpdateUserRequest $request, $id)
     {
         $user = User::findOrFail($id);
-
-        $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
-            'email' => 'required|email|unique:users,email,' . $id,
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
-            'role' => 'required|in:admin,customer,driver',
-            'license_number' => 'required_if:role,driver|nullable|string',
-        ], [
-            'name.required' => 'Nama harus diisi',
-            'name.regex' => 'Nama hanya boleh mengandung huruf',
-            'email.required' => 'Email harus diisi',
-            'email.unique' => 'Email sudah terdaftar',
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
-            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
-            'password.min' => 'Password minimal 8 karakter',
-            'password.confirmed' => 'Konfirmasi password tidak cocok',
-            'password.letters' => 'Password harus mengandung huruf',
-            'password.numbers' => 'Password harus mengandung angka',
-            'password.symbols' => 'Password harus mengandung simbol',
-            'license_number.required_if' => 'Nomor SIM harus diisi untuk driver',
-        ]);
 
         DB::transaction(function () use ($request, $user) {
             $user->fill([
@@ -208,15 +157,19 @@ class UserController extends Controller
             return back()->with('error', 'Tidak dapat menghapus akun sendiri');
         }
 
-        // Check if user has active bookings
-        if ($user->role === 'customer') {
-            $activeBookings = $user->bookings()
-                ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
-                ->count();
+        // Booking memakai FK 'restrict' pada user_id: user dengan riwayat booking
+        // apa pun tidak dapat dihapus (melindungi riwayat finansial & audit).
+        // Cek booking aktif lebih dulu agar pesannya lebih spesifik.
+        $activeBookings = $user->bookings()
+            ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
+            ->count();
 
-            if ($activeBookings > 0) {
-                return back()->with('error', 'Tidak dapat menghapus user yang memiliki booking aktif');
-            }
+        if ($activeBookings > 0) {
+            return back()->with('error', 'Tidak dapat menghapus user yang memiliki booking aktif');
+        }
+
+        if ($user->bookings()->exists()) {
+            return back()->with('error', 'Tidak dapat menghapus user yang memiliki riwayat booking. Data dipertahankan untuk keperluan audit.');
         }
 
         // Hapus file avatar dari storage jika ada

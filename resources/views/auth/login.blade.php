@@ -118,11 +118,14 @@
                                     @enderror
                                 </div>
 
-                                <div class="mb-3 form-check">
-                                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                                    <label class="form-check-label" for="remember">
-                                        Ingat Saya
-                                    </label>
+                                <div class="mb-3 d-flex justify-content-between align-items-center">
+                                    <div class="form-check mb-0">
+                                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                        <label class="form-check-label" for="remember">
+                                            Ingat Saya
+                                        </label>
+                                    </div>
+                                    <a href="{{ route('password.request') }}" class="text-decoration-none small">Lupa password?</a>
                                 </div>
 
                                 <div class="d-grid">
@@ -145,6 +148,8 @@
                         </div>
                     </div>
 
+                    {{-- Akun demo hanya ditampilkan di environment lokal, tidak pernah di produksi --}}
+                    @if(app()->environment('local'))
                     <!-- Login Info -->
                     <div class="card mt-3">
                         <div class="card-body">
@@ -156,6 +161,7 @@
                             </small>
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>

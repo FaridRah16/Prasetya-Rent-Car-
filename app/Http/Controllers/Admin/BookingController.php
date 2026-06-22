@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AssignDriverRequest;
+use App\Http\Requests\UpdateBookingStatusRequest;
 use App\Models\Booking;
 use App\Models\Driver;
 use App\Models\Car;
@@ -58,18 +60,25 @@ class BookingController extends Controller
     /**
      * Update booking status.
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(UpdateBookingStatusRequest $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:pending,confirmed,ongoing,completed,cancelled',
-        ]);
-
         $booking = Booking::findOrFail($id);
         $oldStatus = $booking->status;
 
-        // Booking yang sudah selesai/dibatalkan bersifat final — tidak boleh diubah lagi.
-        if (in_array($oldStatus, ['completed', 'cancelled']) && $request->status !== $oldStatus) {
-            return back()->with('error', 'Status booking yang sudah selesai atau dibatalkan tidak dapat diubah lagi');
+        // State machine: transisi status yang diperbolehkan. 'completed' & 'cancelled'
+        // bersifat final (daftar tujuan kosong). Mencegah lompatan tidak sah
+        // seperti pending → ongoing (melewati pembayaran) atau pending → completed.
+        $allowedTransitions = [
+            'pending'   => ['confirmed', 'cancelled'],
+            'confirmed' => ['ongoing', 'cancelled'],
+            'ongoing'   => ['completed', 'cancelled'],
+            'completed' => [],
+            'cancelled' => [],
+        ];
+
+        if ($request->status !== $oldStatus
+            && ! in_array($request->status, $allowedTransitions[$oldStatus] ?? [], true)) {
+            return back()->with('error', "Transisi status dari '{$oldStatus}' ke '{$request->status}' tidak diperbolehkan.");
         }
 
         DB::transaction(function () use ($booking, $request, $oldStatus) {
@@ -116,12 +125,8 @@ class BookingController extends Controller
     /**
      * Assign driver to booking.
      */
-    public function assignDriver(Request $request, $id)
+    public function assignDriver(AssignDriverRequest $request, $id)
     {
-        $request->validate([
-            'driver_id' => 'required|exists:drivers,user_id',
-        ]);
-
         $booking = Booking::findOrFail($id);
 
         // Tidak bisa menugaskan driver ke booking yang sudah selesai/dibatalkan.
@@ -129,32 +134,38 @@ class BookingController extends Controller
             return back()->with('error', 'Tidak dapat menugaskan driver pada booking yang sudah selesai atau dibatalkan');
         }
 
-        // Cegah double-booking driver: pastikan driver tidak punya tugas lain
-        // yang bertumpang-tindih dengan rentang waktu booking ini.
-        $pickup = $booking->start_date->format('Y-m-d') . ' ' . ($booking->pickup_time ?? '00:00:00');
-        $return = $booking->end_date->format('Y-m-d') . ' ' . ($booking->return_time ?? '00:00:00');
+        // Seluruh cek-overlap + penugasan dibungkus transaksi dengan lockForUpdate
+        // untuk mencegah race condition (dua admin menugaskan driver yang sama ke
+        // dua booking bertumpang-waktu secara bersamaan / TOCTOU).
+        try {
+            DB::transaction(function () use ($booking, $request) {
+                // Kunci baris booking driver terkait agar request lain menunggu.
+                $pickup = $booking->start_date->format('Y-m-d') . ' ' . ($booking->pickup_time ?? '00:00:00');
+                $return = $booking->end_date->format('Y-m-d') . ' ' . ($booking->return_time ?? '00:00:00');
 
-        $driverBusy = Booking::where('driver_id', $request->driver_id)
-            ->where('id', '!=', $booking->id)
-            ->blockingSlot()
-            ->whereRaw("CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?", [$return])
-            ->whereRaw("CONCAT(end_date, ' ', COALESCE(return_time, '00:00:00')) > ?", [$pickup])
-            ->exists();
+                $driverBusy = Booking::where('driver_id', $request->driver_id)
+                    ->where('id', '!=', $booking->id)
+                    ->blockingSlot()
+                    ->whereRaw("CONCAT(start_date, ' ', COALESCE(pickup_time, '00:00:00')) < ?", [$return])
+                    ->whereRaw("CONCAT(end_date, ' ', COALESCE(return_time, '00:00:00')) > ?", [$pickup])
+                    ->lockForUpdate()
+                    ->exists();
 
-        if ($driverBusy) {
-            return back()->with('error', 'Driver tersebut sudah memiliki tugas pada rentang tanggal booking ini. Silakan pilih driver lain.');
+                if ($driverBusy) {
+                    throw new \RuntimeException('Driver tersebut sudah memiliki tugas pada rentang tanggal booking ini. Silakan pilih driver lain.');
+                }
+
+                // Bebaskan driver lama jika ada
+                if ($booking->driver_id) {
+                    Driver::where('user_id', $booking->driver_id)->update(['status' => 'available']);
+                }
+
+                // Tugaskan driver baru (status tetap 'available' sampai booking benar-benar dimulai)
+                $booking->update(['driver_id' => $request->driver_id]);
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        // Release old driver if exists
-        if ($booking->driver_id) {
-            $oldDriver = Driver::where('user_id', $booking->driver_id)->first();
-            if ($oldDriver) {
-                $oldDriver->update(['status' => 'available']);
-            }
-        }
-
-        // Assign new driver (status tetap 'available' sampai booking benar-benar dimulai)
-        $booking->update(['driver_id' => $request->driver_id]);
 
         return back()->with('success', 'Driver berhasil ditugaskan');
     }
@@ -189,8 +200,9 @@ class BookingController extends Controller
     {
         $booking = Booking::findOrFail($id);
 
-        // Delete payment proof file
+        // Hapus berkas bukti bayar (PII) dari disk privat 'local'; cek 'public' untuk berkas legacy.
         if ($booking->payment_proof) {
+            Storage::disk('local')->delete($booking->payment_proof);
             Storage::disk('public')->delete($booking->payment_proof);
         }
 

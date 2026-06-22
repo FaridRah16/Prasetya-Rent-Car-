@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\SubmitVerificationRequest;
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
@@ -23,29 +24,9 @@ class ProfileController extends Controller
     /**
      * Update profile information.
      */
-    public function update(Request $request)
+    public function update(UpdateProfileRequest $request)
     {
         $user = Auth::user();
-
-        $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'whatsapp_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'avatar' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
-        ], [
-            'name.required' => 'Nama harus diisi',
-            'name.regex' => 'Nama hanya boleh mengandung huruf',
-            'email.required' => 'Email harus diisi',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah digunakan',
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
-            'whatsapp_number.regex' => 'Nomor WhatsApp hanya boleh mengandung angka',
-            'avatar.image' => 'File harus berupa gambar',
-            'avatar.mimes' => 'Format gambar harus JPEG, JPG, atau PNG',
-            'avatar.max' => 'Ukuran gambar maksimal 2MB',
-        ]);
 
         $data = [
             'name' => $request->name,
@@ -83,21 +64,8 @@ class ProfileController extends Controller
     /**
      * Update password.
      */
-    public function updatePassword(Request $request)
+    public function updatePassword(UpdatePasswordRequest $request)
     {
-        $request->validate([
-            'current_password' => 'required',
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
-        ], [
-            'current_password.required' => 'Password saat ini harus diisi',
-            'password.required' => 'Password baru harus diisi',
-            'password.confirmed' => 'Konfirmasi password tidak cocok',
-            'password.min' => 'Password minimal 8 karakter',
-            'password.letters' => 'Password harus mengandung huruf',
-            'password.numbers' => 'Password harus mengandung angka',
-            'password.symbols' => 'Password harus mengandung simbol',
-        ]);
-
         $user = Auth::user();
 
         // Check if current password is correct
@@ -134,7 +102,7 @@ class ProfileController extends Controller
     /**
      * Submit account verification (phone number + SIM photo) for admin approval.
      */
-    public function submitVerification(Request $request)
+    public function submitVerification(SubmitVerificationRequest $request)
     {
         $user = Auth::user();
 
@@ -145,18 +113,6 @@ class ProfileController extends Controller
         if ($user->isPendingVerification()) {
             return back()->with('error', 'Verifikasi Anda sedang menunggu konfirmasi admin');
         }
-
-        $request->validate([
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'sim_photo' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
-        ], [
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
-            'sim_photo.required' => 'Foto SIM wajib diupload',
-            'sim_photo.image' => 'File harus berupa gambar',
-            'sim_photo.mimes' => 'Format gambar harus JPEG, JPG, atau PNG',
-            'sim_photo.max' => 'Ukuran gambar maksimal 2MB',
-        ]);
 
         // Hapus foto SIM lama jika ada (cek disk privat & legacy publik)
         if ($user->sim_photo) {

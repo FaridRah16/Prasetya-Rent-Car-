@@ -37,6 +37,25 @@ class User extends Authenticatable
     }
 
     /**
+     * Jaga invariant: verified_at selalu konsisten dengan verification_status.
+     * Saat status 'verified' tapi belum ada timestamp → diisi sekarang; saat
+     * status bukan 'verified' → timestamp dikosongkan. Mencegah kondisi tak
+     * konsisten (mis. status verified tanpa verified_at).
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            if ($user->verification_status === 'verified') {
+                if (is_null($user->verified_at)) {
+                    $user->verified_at = now();
+                }
+            } else {
+                $user->verified_at = null;
+            }
+        });
+    }
+
+    /**
      * Get the bookings for the user.
      */
     public function bookings(): HasMany

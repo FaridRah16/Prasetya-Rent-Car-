@@ -28,10 +28,11 @@ class DashboardController extends Controller
         $totalUsers = User::count();
         $totalCustomers = User::where('role', 'customer')->count();
 
-        // Revenue this month
+        // Revenue this month — booking dibatalkan dikecualikan (uang di-refund).
         $monthRevenue = Booking::whereMonth('created_at', date('m'))
             ->whereYear('created_at', date('Y'))
             ->where('payment_status', 'paid')
+            ->where('status', '!=', 'cancelled')
             ->sum('total_price');
 
         // Recent bookings

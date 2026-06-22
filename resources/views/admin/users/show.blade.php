@@ -84,7 +84,7 @@
 
                     @if($user->sim_photo)
                         <p class="mb-1"><strong>Foto SIM:</strong></p>
-                        <a href="{{ route('secure.sim', $user->id) }}" target="_blank">
+                        <a href="{{ route('secure.sim', $user->id) }}" target="_blank" rel="noopener noreferrer">
                             <img src="{{ route('secure.sim', $user->id) }}"
                                  alt="Foto SIM"
                                  class="img-fluid rounded border mb-3"
@@ -278,7 +278,7 @@
                 <div class="card-body">
                     <h5 class="text-muted mb-1">Total Transaksi</h5>
                     <h2 class="text-primary mb-0">
-                        Rp {{ number_format($user->bookings->where('payment_status', 'paid')->sum('total_price'), 0, ',', '.') }}
+                        Rp {{ number_format($user->bookings->where('payment_status', 'paid')->where('status', '!=', 'cancelled')->sum('total_price'), 0, ',', '.') }}
                     </h2>
                 </div>
             </div>

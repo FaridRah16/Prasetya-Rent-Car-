@@ -28,4 +28,18 @@ return [
 
     'pending_ttl_hours' => (int) env('BOOKING_PENDING_TTL_HOURS', 24),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Batas Waktu Pembayaran (menit)
+    |--------------------------------------------------------------------------
+    |
+    | Setelah booking dibuat, customer diberi jendela waktu ini (dalam menit)
+    | untuk mengunggah bukti pembayaran. Hitung mundur realtime ditampilkan
+    | pada nota. Jika lewat, booking otomatis dibatalkan (saat dibuka kembali
+    | atau lewat command bookings:expire-pending).
+    |
+    */
+
+    'payment_window_minutes' => (int) env('BOOKING_PAYMENT_WINDOW_MINUTES', 30),
+
 ];

@@ -90,7 +90,7 @@
                             <small class="text-muted">No. WhatsApp</small>
                             <p class="mb-0">
                                 <a href="https://wa.me/{{ formatWhatsAppNumber($booking->user->whatsapp_number) }}" 
-                                   target="_blank" 
+                                   target="_blank" rel="noopener noreferrer" 
                                    class="text-decoration-none text-success">
                                     <i class="bi bi-whatsapp"></i> {{ $booking->user->whatsapp_number }}
                                 </a>
@@ -108,7 +108,7 @@
                         $waNumber = formatWhatsAppNumber($booking->user->whatsapp_number ?: $booking->user->phone);
                     @endphp
                     <a href="https://wa.me/{{ $waNumber }}" 
-                       target="_blank" 
+                       target="_blank" rel="noopener noreferrer" 
                        class="btn btn-outline-success btn-sm">
                         <i class="bi bi-whatsapp"></i> WhatsApp
                     </a>
@@ -184,7 +184,7 @@
                         <small class="text-muted">Lokasi Penjemputan</small>
                         <p class="mb-0"><i class="bi bi-geo-alt-fill text-primary"></i> {{ $booking->pickup_location }}</p>
                         @if($booking->pickup_lat && $booking->pickup_lng)
-                            <a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" class="small">
+                            <a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" rel="noopener noreferrer" class="small">
                                 <i class="bi bi-map"></i> Lihat di Google Maps
                             </a>
                         @endif
@@ -193,7 +193,7 @@
                         <small class="text-muted">Lokasi Pengantaran</small>
                         <p class="mb-0"><i class="bi bi-geo-alt-fill text-success"></i> {{ $booking->dropoff_location }}</p>
                         @if($booking->dropoff_lat && $booking->dropoff_lng)
-                            <a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" class="small">
+                            <a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" rel="noopener noreferrer" class="small">
                                 <i class="bi bi-map"></i> Lihat di Google Maps
                             </a>
                         @endif

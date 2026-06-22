@@ -58,19 +58,16 @@ class CarController extends Controller
 
         // Handle image upload
         if ($request->hasFile('image')) {
-            $file = $request->file('image');
-            $filename = 'car_' . time() . '.' . $file->extension();
-            $path = $file->storeAs('cars', $filename, 'public');
-            $data['image'] = $path;
+            // store() menghasilkan nama acak (anti-tebak & anti-tabrakan)
+            $data['image'] = $request->file('image')->store('cars', 'public');
         }
 
         // Handle gallery upload
         if ($request->hasFile('gallery')) {
             $galleryPaths = [];
-            foreach ($request->file('gallery') as $index => $file) {
-                $filename = 'car_gallery_' . time() . '_' . $index . '.' . $file->extension();
-                $path = $file->storeAs('cars/gallery', $filename, 'public');
-                $galleryPaths[] = $path;
+            foreach ($request->file('gallery') as $file) {
+                // store() menghasilkan nama acak (anti-tebak & anti-tabrakan)
+                $galleryPaths[] = $file->store('cars/gallery', 'public');
             }
             $data['gallery'] = $galleryPaths;
         }
@@ -119,10 +116,8 @@ class CarController extends Controller
                 Storage::disk('public')->delete($car->image);
             }
 
-            $file = $request->file('image');
-            $filename = 'car_' . time() . '.' . $file->extension();
-            $path = $file->storeAs('cars', $filename, 'public');
-            $data['image'] = $path;
+            // store() menghasilkan nama acak (anti-tebak & anti-tabrakan)
+            $data['image'] = $request->file('image')->store('cars', 'public');
         }
 
         // Handle gallery upload
@@ -135,10 +130,9 @@ class CarController extends Controller
             }
 
             $galleryPaths = [];
-            foreach ($request->file('gallery') as $index => $file) {
-                $filename = 'car_gallery_' . time() . '_' . $index . '.' . $file->extension();
-                $path = $file->storeAs('cars/gallery', $filename, 'public');
-                $galleryPaths[] = $path;
+            foreach ($request->file('gallery') as $file) {
+                // store() menghasilkan nama acak (anti-tebak & anti-tabrakan)
+                $galleryPaths[] = $file->store('cars/gallery', 'public');
             }
             $data['gallery'] = $galleryPaths;
         }
@@ -156,13 +150,19 @@ class CarController extends Controller
     {
         $car = Car::findOrFail($id);
 
-        // Check if car has active bookings
+        // Booking memakai FK 'restrict' pada car_id: mobil dengan riwayat booking
+        // apa pun tidak dapat dihapus (melindungi riwayat finansial & audit).
+        // Cek booking aktif lebih dulu agar pesannya lebih spesifik.
         $activeBookings = $car->bookings()
             ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
             ->count();
 
         if ($activeBookings > 0) {
             return back()->with('error', 'Tidak dapat menghapus mobil yang memiliki booking aktif');
+        }
+
+        if ($car->bookings()->exists()) {
+            return back()->with('error', 'Tidak dapat menghapus mobil yang memiliki riwayat booking. Data dipertahankan untuk keperluan audit.');
         }
 
         // Delete image if exists

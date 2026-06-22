@@ -127,7 +127,7 @@
                     $galleryUrls = $car->gallery_urls;
                 @endphp
                 @foreach($galleryUrls as $i => $url)
-                    <div class="thumbnail-box {{ $i === 0 ? 'active' : '' }}" onclick="changeMainImage(this, '{{ $url }}')">
+                    <div class="thumbnail-box {{ $i === 0 ? 'active' : '' }}" data-url="{{ $url }}" onclick="changeMainImage(this, this.dataset.url)">
                         <img src="{{ $url }}" alt="Gallery {{ $i + 1 }}">
                     </div>
                 @endforeach

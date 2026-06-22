@@ -29,15 +29,17 @@ class ExpirePendingBookings extends Command
      */
     public function handle(): int
     {
-        $ttlHours = (int) config('business.pending_ttl_hours', 24);
-        $cutoff = now()->subHours($ttlHours);
+        // Batas waktu pembayaran (menit) adalah jendela yang mengikat: booking
+        // pending yang belum dibayar melewatinya akan dibatalkan otomatis.
+        $windowMinutes = (int) config('business.payment_window_minutes', 30);
+        $cutoff = now()->subMinutes($windowMinutes);
 
         $count = Booking::where('status', 'pending')
             ->where('payment_status', 'unpaid')
             ->where('created_at', '<', $cutoff)
             ->update(['status' => 'cancelled']);
 
-        $this->info("{$count} booking pending kedaluwarsa dibatalkan.");
+        $this->info("{$count} booking pending kedaluwarsa (batas waktu pembayaran {$windowMinutes} menit) dibatalkan.");
 
         return self::SUCCESS;
     }

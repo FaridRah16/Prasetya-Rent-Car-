@@ -3,10 +3,16 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -22,17 +28,8 @@ class AuthController extends Controller
     /**
      * Handle login request.
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ], [
-            'email.required' => 'Email harus diisi',
-            'email.email' => 'Format email tidak valid',
-            'password.required' => 'Password harus diisi',
-        ]);
-
         if (Auth::attempt($request->only('email', 'password'), $request->filled('remember'))) {
             $request->session()->regenerate();
 
@@ -64,29 +61,8 @@ class AuthController extends Controller
     /**
      * Handle register request.
      */
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255', 'regex:/^[\pL\s]+$/u'],
-            'email' => 'required|string|email|max:255|unique:users',
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
-        ], [
-            'name.required' => 'Nama lengkap harus diisi',
-            'name.regex' => 'Nama lengkap hanya boleh mengandung huruf',
-            'email.required' => 'Email harus diisi',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah terdaftar',
-            'phone.required' => 'Nomor telepon harus diisi',
-            'phone.regex' => 'Nomor telepon hanya boleh mengandung angka',
-            'password.required' => 'Password harus diisi',
-            'password.min' => 'Password minimal 8 karakter',
-            'password.confirmed' => 'Konfirmasi password tidak cocok',
-            'password.letters' => 'Password harus mengandung huruf',
-            'password.numbers' => 'Password harus mengandung angka',
-            'password.symbols' => 'Password harus mengandung simbol (contoh: !@#$%)',
-        ]);
-
         $user = new User([
             'name' => $request->name,
             'email' => $request->email,
@@ -112,5 +88,58 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('home')->with('success', 'Anda telah keluar.');
+    }
+
+    /**
+     * Show "lupa password" form.
+     */
+    public function showForgotPasswordForm()
+    {
+        return view('auth.forgot-password');
+    }
+
+    /**
+     * Kirim link reset password ke email.
+     *
+     * Pesan sukses bersifat netral (tidak membocorkan apakah email terdaftar)
+     * untuk mencegah enumerasi akun.
+     */
+    public function sendResetLink(ForgotPasswordRequest $request)
+    {
+        PasswordBroker::sendResetLink($request->only('email'));
+
+        return back()->with('success', 'Jika email terdaftar, link reset password telah dikirim. Silakan cek email Anda.');
+    }
+
+    /**
+     * Show form reset password (dari link di email).
+     */
+    public function showResetForm(Request $request, string $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => $request->query('email'),
+        ]);
+    }
+
+    /**
+     * Proses reset password.
+     */
+    public function resetPassword(ResetPasswordRequest $request)
+    {
+        $status = PasswordBroker::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->password = $password; // Cast 'hashed' meng-hash otomatis
+                $user->setRememberToken(Str::random(60));
+                $user->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === PasswordBroker::PASSWORD_RESET
+            ? redirect()->route('login')->with('success', 'Password berhasil direset. Silakan login dengan password baru.')
+            : back()->withErrors(['email' => __($status)]);
     }
 }

@@ -542,7 +542,7 @@
         if (lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
             display.innerHTML = 
                 '<i class="bi bi-geo-alt-fill text-success"></i> Koordinat: ' + lat + ', ' + lng +
-                ' &middot; <a href="https://www.google.com/maps?q=' + lat + ',' + lng + '" target="_blank" class="text-primary">Lihat di Google Maps</a>';
+                ' &middot; <a href="https://www.google.com/maps?q=' + lat + ',' + lng + '" target="_blank" rel="noopener noreferrer" class="text-primary">Lihat di Google Maps</a>';
             if (gmapsBtn) gmapsBtn.style.display = '';
         } else {
             display.innerHTML = '';

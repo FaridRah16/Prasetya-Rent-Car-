@@ -153,4 +153,30 @@ class Booking extends Model
     {
         return $this->payment_proof ? asset('storage/' . $this->payment_proof) : null;
     }
+
+    /**
+     * Batas waktu pembayaran: dibuat + jendela waktu (menit) dari config.
+     * Mengembalikan null jika booking tidak lagi menunggu pembayaran
+     * (status bukan 'pending' atau sudah dibayar).
+     */
+    public function paymentDeadline(): ?\Carbon\Carbon
+    {
+        if ($this->status !== 'pending' || $this->payment_status !== 'unpaid') {
+            return null;
+        }
+
+        $minutes = (int) config('business.payment_window_minutes', 30);
+
+        return $this->created_at->copy()->addMinutes($minutes);
+    }
+
+    /**
+     * Apakah batas waktu pembayaran sudah terlewati?
+     */
+    public function isPaymentExpired(): bool
+    {
+        $deadline = $this->paymentDeadline();
+
+        return $deadline !== null && now()->greaterThan($deadline);
+    }
 }

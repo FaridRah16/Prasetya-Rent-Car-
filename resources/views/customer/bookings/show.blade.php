@@ -117,7 +117,7 @@
                         <p class="mb-0">
                             <i class="bi bi-geo-alt"></i> {{ $booking->pickup_location }}
                             @if($booking->pickup_lat && $booking->pickup_lng)
-                                <br><a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" class="small text-primary">
+                                <br><a href="https://www.google.com/maps?q={{ $booking->pickup_lat }},{{ $booking->pickup_lng }}" target="_blank" rel="noopener noreferrer" class="small text-primary">
                                     <i class="bi bi-map"></i> Lihat di Google Maps
                                 </a>
                             @endif
@@ -128,7 +128,7 @@
                         <p class="mb-0">
                             <i class="bi bi-geo-alt"></i> {{ $booking->dropoff_location }}
                             @if($booking->dropoff_lat && $booking->dropoff_lng)
-                                <br><a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" class="small text-primary">
+                                <br><a href="https://www.google.com/maps?q={{ $booking->dropoff_lat }},{{ $booking->dropoff_lng }}" target="_blank" rel="noopener noreferrer" class="small text-primary">
                                     <i class="bi bi-map"></i> Lihat di Google Maps
                                 </a>
                             @endif
@@ -148,7 +148,7 @@
                                     @php $driverContact = $booking->driver->whatsapp_number ?: $booking->driver->phone; @endphp
                                     @if($driverContact)
                                         <a href="https://wa.me/{{ formatWhatsAppNumber($driverContact) }}"
-                                           target="_blank"
+                                           target="_blank" rel="noopener noreferrer"
                                            class="small text-success ms-1">
                                             <i class="bi bi-whatsapp"></i> WhatsApp
                                         </a>
@@ -176,8 +176,27 @@
                     <h5 class="mb-0"><i class="bi bi-upload"></i> Upload Bukti Pembayaran</h5>
                 </div>
                 <div class="card-body">
+                    @php
+                        $paymentDeadline = $booking->paymentDeadline();
+                    @endphp
+                    @if($paymentDeadline)
+                        <div class="alert alert-danger d-flex align-items-center mb-3"
+                             id="paymentCountdown"
+                             data-deadline="{{ $paymentDeadline->timestamp * 1000 }}">
+                            <i class="bi bi-stopwatch-fill me-2 fs-3"></i>
+                            <div>
+                                Selesaikan pembayaran dalam
+                                <strong class="fs-5" id="countdownTimer">--:--</strong>
+                                <div class="small">
+                                    Batas waktu: {{ $paymentDeadline->copy()->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB.
+                                    Lewat dari ini booking dibatalkan otomatis.
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <p class="mb-3">Silakan lakukan pembayaran sejumlah <strong>Rp {{ number_format($booking->total_price, 0, ',', '.') }}</strong> ke rekening:</p>
-                    
+
                     <div class="alert alert-info">
                         <strong>{{ config('payment.bank_name') }}</strong><br>
                         No. Rekening: <strong>{{ config('payment.account_number') }}</strong><br>
@@ -278,4 +297,50 @@
         </a>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    (function () {
+        const box = document.getElementById('paymentCountdown');
+        if (!box) return;
+
+        const timerEl = document.getElementById('countdownTimer');
+        const deadline = parseInt(box.dataset.deadline, 10); // epoch ms
+        const form = box.closest('.card')?.querySelector('form[action*="upload-payment"]');
+
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+        function tick() {
+            const remaining = deadline - Date.now();
+
+            if (remaining <= 0) {
+                timerEl.textContent = '00:00';
+                box.classList.remove('alert-danger');
+                box.classList.add('alert-secondary');
+                timerEl.textContent = 'Waktu habis';
+                if (form) {
+                    form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+                }
+                clearInterval(interval);
+                // Muat ulang agar status booking (dibatalkan) ter-update dari server
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+            }
+
+            const totalSeconds = Math.floor(remaining / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            timerEl.textContent = pad(minutes) + ':' + pad(seconds);
+
+            // Beri peringatan visual saat < 5 menit
+            if (remaining <= 5 * 60 * 1000) {
+                box.classList.add('border', 'border-danger');
+            }
+        }
+
+        tick();
+        const interval = setInterval(tick, 1000);
+    })();
+</script>
 @endsection

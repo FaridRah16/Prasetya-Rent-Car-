@@ -21,8 +21,10 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'confirmed', 'ongoing'])
             ->count();
 
+        // Pengeluaran tidak menghitung booking yang dibatalkan (uang di-refund).
         $totalSpending = Booking::where('user_id', $userId)
             ->where('payment_status', 'paid')
+            ->where('status', '!=', 'cancelled')
             ->sum('total_price');
 
         return view('customer.dashboard', compact(

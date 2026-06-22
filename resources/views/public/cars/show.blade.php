@@ -436,7 +436,7 @@
                     $galleryUrls = $car->gallery_urls;
                 @endphp
                 @foreach($galleryUrls as $i => $url)
-                    <div class="thumbnail-box {{ $i === 0 ? 'active' : '' }}" onclick="changeMainImage(this, '{{ $url }}')" ondblclick="openLightbox({{ $i }})" title="Klik 2x untuk perbesar">
+                    <div class="thumbnail-box {{ $i === 0 ? 'active' : '' }}" data-url="{{ $url }}" onclick="changeMainImage(this, this.dataset.url)" ondblclick="openLightbox({{ $i }})" title="Klik 2x untuk perbesar">
                         <img src="{{ $url }}" alt="Gallery {{ $i + 1 }}">
                     </div>
                 @endforeach
@@ -565,7 +565,7 @@
                         </button>
                     @endif
                     
-                    <a href="https://wa.me/{{ config('business.whatsapp') }}?text=Halo%20Prasetya%20RentCar,%20saya%20tertarik%20menyewa%20mobil%20{{ urlencode($car->name) }}" target="_blank" class="btn-orange-pill">
+                    <a href="https://wa.me/{{ config('business.whatsapp') }}?text=Halo%20Prasetya%20RentCar,%20saya%20tertarik%20menyewa%20mobil%20{{ urlencode($car->name) }}" target="_blank" rel="noopener noreferrer" class="btn-orange-pill">
                         Hubungi Kami <i class="bi bi-whatsapp"></i>
                     </a>
                 </div>

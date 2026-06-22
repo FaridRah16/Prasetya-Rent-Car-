@@ -31,3 +31,7 @@ Thumbs.db
 /plan.md
 /PROGRESS.md
 /TASK_9_SUMMARY.md
+
+# Launcher scheduler spesifik-mesin (path PHP di-hardcode per komputer)
+/schedule-run.bat
+/schedule-run.vbs

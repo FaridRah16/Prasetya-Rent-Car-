@@ -22,11 +22,14 @@ class ReportController extends Controller
         $confirmedBookings = Booking::where('status', 'confirmed')->count();
         $ongoingBookings = Booking::where('status', 'ongoing')->count();
 
-        // Revenue stats
-        $totalRevenue = Booking::where('payment_status', 'paid')->sum('total_price');
+        // Revenue stats — booking yang dibatalkan dikecualikan (uang di-refund).
+        $totalRevenue = Booking::where('payment_status', 'paid')
+            ->where('status', '!=', 'cancelled')
+            ->sum('total_price');
         $monthRevenue = Booking::whereMonth('created_at', date('m'))
             ->whereYear('created_at', date('Y'))
             ->where('payment_status', 'paid')
+            ->where('status', '!=', 'cancelled')
             ->sum('total_price');
 
         // Resource counts
@@ -46,6 +49,7 @@ class ReportController extends Controller
                 'revenue' => Booking::whereMonth('created_at', $date->month)
                     ->whereYear('created_at', $date->year)
                     ->where('payment_status', 'paid')
+                    ->where('status', '!=', 'cancelled')
                     ->sum('total_price'),
             ];
         }
