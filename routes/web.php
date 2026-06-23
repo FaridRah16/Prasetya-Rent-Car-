@@ -107,6 +107,14 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::post('/bookings/{id}/upload-payment', [\App\Http\Controllers\Customer\BookingController::class, 'uploadPayment'])->name('bookings.uploadPayment');
     Route::post('/bookings/{id}/cancel', [\App\Http\Controllers\Customer\BookingController::class, 'cancel'])->name('bookings.cancel');
     
+    // Payment (Midtrans)
+    Route::get('/bookings/{booking}/payment', [\App\Http\Controllers\Customer\PaymentController::class, 'show'])->name('payment.show');
+    Route::post('/bookings/{booking}/payment/token', [\App\Http\Controllers\Customer\PaymentController::class, 'regenerateToken'])->name('payment.token');
+    Route::get('/bookings/{booking}/payment/finish', [\App\Http\Controllers\Customer\PaymentController::class, 'finish'])->name('payment.finish');
+    Route::get('/bookings/{booking}/payment/unfinish', [\App\Http\Controllers\Customer\PaymentController::class, 'unfinish'])->name('payment.unfinish');
+    Route::get('/bookings/{booking}/payment/error', [\App\Http\Controllers\Customer\PaymentController::class, 'error'])->name('payment.error');
+    Route::post('/bookings/{booking}/payment/check-status', [\App\Http\Controllers\Customer\PaymentController::class, 'checkStatus'])->name('payment.checkStatus');
+
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -115,6 +123,11 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::delete('/profile/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.deleteAvatar');
     Route::post('/profile/verification', [ProfileController::class, 'submitVerification'])->name('profile.verification');
 });
+
+// Midtrans Webhook Notification — dipanggil Midtrans server-to-server
+// WAJIB dikecualikan dari CSRF verification dan auth middleware
+Route::post('/api/payment/notification', [\App\Http\Controllers\PaymentNotificationController::class, 'handle'])
+    ->name('payment.notification');
 
 // Driver Routes
 Route::middleware(['auth', 'role:driver'])->prefix('driver')->name('driver.')->group(function () {

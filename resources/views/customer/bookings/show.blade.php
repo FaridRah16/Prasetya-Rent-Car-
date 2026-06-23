@@ -169,16 +169,20 @@
             </div>
         </div>
 
-        <!-- Payment Proof Upload -->
+        <!-- Payment Section -->
         @if($booking->status === 'pending' && $booking->payment_status === 'unpaid')
-            <div class="card mb-4">
-                <div class="card-header bg-warning">
-                    <h5 class="mb-0"><i class="bi bi-upload"></i> Upload Bukti Pembayaran</h5>
+            @php
+                $paymentDeadline = $booking->paymentDeadline();
+                $midtransConfigured = config('midtrans.server_key') && config('midtrans.client_key');
+            @endphp
+
+            <!-- Midtrans Payment Button -->
+            @if($midtransConfigured)
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-credit-card"></i> Bayar via Midtrans</h5>
                 </div>
-                <div class="card-body">
-                    @php
-                        $paymentDeadline = $booking->paymentDeadline();
-                    @endphp
+                <div class="card-body text-center py-4">
                     @if($paymentDeadline)
                         <div class="alert alert-danger d-flex align-items-center mb-3"
                              id="paymentCountdown"
@@ -195,7 +199,45 @@
                         </div>
                     @endif
 
-                    <p class="mb-3">Silakan lakukan pembayaran sejumlah <strong>Rp {{ number_format($booking->total_price, 0, ',', '.') }}</strong> ke rekening:</p>
+                    <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3">Pembayaran Aman via Midtrans</h5>
+                    <p class="text-muted mb-4">
+                        Transfer bank (BCA, BNI, BRI, Mandiri), GoPay, QRIS, dan lainnya.<br>
+                        Pembayaran diverifikasi otomatis.
+                    </p>
+                    <a href="{{ route('customer.payment.show', $booking->id) }}" class="btn btn-primary btn-lg px-5">
+                        <i class="bi bi-credit-card"></i> Bayar Sekarang
+                    </a>
+                </div>
+            </div>
+            @endif
+
+            <!-- Upload Bukti Pembayaran (Manual) -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-upload"></i>
+                        {{ $midtransConfigured ? 'Atau Upload Bukti Pembayaran Manual' : 'Upload Bukti Pembayaran' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if(!$midtransConfigured && $paymentDeadline)
+                        <div class="alert alert-danger d-flex align-items-center mb-3"
+                             id="paymentCountdown"
+                             data-deadline="{{ $paymentDeadline->timestamp * 1000 }}">
+                            <i class="bi bi-stopwatch-fill me-2 fs-3"></i>
+                            <div>
+                                Selesaikan pembayaran dalam
+                                <strong class="fs-5" id="countdownTimer">--:--</strong>
+                                <div class="small">
+                                    Batas waktu: {{ $paymentDeadline->copy()->timezone('Asia/Jakarta')->format('d M Y, H:i') }} WIB.
+                                    Lewat dari ini booking dibatalkan otomatis.
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    <p class="mb-3">Transfer sejumlah <strong>Rp {{ number_format($booking->total_price, 0, ',', '.') }}</strong> ke rekening:</p>
 
                     <div class="alert alert-info">
                         <strong>{{ config('payment.bank_name') }}</strong><br>
@@ -207,10 +249,10 @@
                         @csrf
                         <div class="mb-3">
                             <label class="form-label">Upload Bukti Transfer</label>
-                            <input type="file" 
-                                   class="form-control @error('payment_proof') is-invalid @enderror" 
-                                   name="payment_proof" 
-                                   accept="image/*" 
+                            <input type="file"
+                                   class="form-control @error('payment_proof') is-invalid @enderror"
+                                   name="payment_proof"
+                                   accept="image/*"
                                    required>
                             @error('payment_proof')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -221,6 +263,87 @@
                             <i class="bi bi-upload"></i> Upload Bukti Bayar
                         </button>
                     </form>
+                </div>
+            </div>
+        @endif
+
+        <!-- Midtrans Transaction Status (jika ada transaksi via Midtrans) -->
+        @if($booking->order_id)
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Status Transaksi Midtrans</h5>
+                    <form method="POST" action="{{ route('customer.payment.checkStatus', $booking->id) }}" class="mb-0">
+                        @csrf
+                        <button type="submit" class="btn btn-light btn-sm">
+                            <i class="bi bi-arrow-repeat"></i> Cek Status
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted" style="width: 180px;">Order ID</td>
+                            <td class="font-monospace">{{ $booking->order_id }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Metode Pembayaran</td>
+                            <td>
+                                @if($booking->payment_type)
+                                    <span class="badge bg-info">{{ strtoupper($booking->payment_type) }}</span>
+                                    @if($booking->payment_channel)
+                                        <span class="badge bg-secondary ms-1">{{ strtoupper($booking->payment_channel) }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">Menunggu pembayaran...</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status Transaksi</td>
+                            <td>
+                                @php
+                                    $txStatus = $booking->transaction_status;
+                                    $statusColor = match($txStatus) {
+                                        'settlement', 'capture' => 'success',
+                                        'pending' => 'warning',
+                                        'expire', 'cancel', 'deny', 'refund' => 'danger',
+                                        default => 'secondary'
+                                    };
+                                    $statusLabel = match($txStatus) {
+                                        'settlement', 'capture' => 'BERHASIL',
+                                        'pending' => 'MENUNGGU BAYAR',
+                                        'expire' => 'KADALUARSA',
+                                        'cancel' => 'DIBATALKAN',
+                                        'deny' => 'DITOLAK',
+                                        null => 'BELUM BAYAR',
+                                        default => strtoupper($txStatus),
+                                    };
+                                @endphp
+                                <span class="badge bg-{{ $statusColor }} fs-6">
+                                    {{ $statusLabel }}
+                                </span>
+                            </td>
+                        </tr>
+                        @if($booking->transaction_time)
+                        <tr>
+                            <td class="text-muted">Waktu Transaksi</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->transaction_time)->setTimezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' }}</td>
+                        </tr>
+                        @endif
+                        @if($booking->settlement_time)
+                        <tr>
+                            <td class="text-muted">Waktu Selesai</td>
+                            <td>{{ \Carbon\Carbon::parse($booking->settlement_time)->setTimezone('Asia/Jakarta')->format('d M Y, H:i') . ' WIB' }}</td>
+                        </tr>
+                        @endif
+                    </table>
+
+                    @if(!$booking->transaction_status || $booking->transaction_status === 'pending')
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Setelah melakukan pembayaran di Midtrans, klik tombol <strong>"Cek Status"</strong> di atas untuk memperbarui status booking.
+                        </div>
+                    @endif
                 </div>
             </div>
         @endif
@@ -276,21 +399,38 @@
         </div>
 
         <!-- Actions -->
-        @if($booking->status === 'pending')
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Aksi</h5>
-                </div>
-                <div class="card-body">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Aksi</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                @if($booking->status === 'pending' && $booking->payment_status === 'unpaid')
+                    @if(config('midtrans.server_key') && config('midtrans.client_key'))
+                        <a href="{{ route('customer.payment.show', $booking->id) }}" class="btn btn-primary w-100">
+                            <i class="bi bi-credit-card"></i> Bayar via Midtrans
+                        </a>
+                    @endif
+                @endif
+
+                @if($booking->order_id)
+                    <form method="POST" action="{{ route('customer.payment.checkStatus', $booking->id) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-info text-white w-100">
+                            <i class="bi bi-arrow-repeat"></i> Cek Status Pembayaran
+                        </button>
+                    </form>
+                @endif
+
+                @if($booking->status === 'pending')
                     <form method="POST" action="{{ route('customer.bookings.cancel', $booking->id) }}" onsubmit="return confirm('Yakin ingin membatalkan booking ini?')">
                         @csrf
-                        <button type="submit" class="btn btn-danger w-100">
+                        <button type="submit" class="btn btn-outline-danger w-100">
                             <i class="bi bi-x-circle"></i> Batalkan Booking
                         </button>
                     </form>
-                </div>
+                @endif
             </div>
-        @endif
+        </div>
 
         <a href="{{ route('customer.bookings.index') }}" class="btn btn-outline-primary w-100 mt-3">
             <i class="bi bi-arrow-left"></i> Kembali ke Daftar Booking
