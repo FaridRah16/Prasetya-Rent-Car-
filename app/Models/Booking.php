@@ -2,15 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'car_id', 'driver_id', 'start_date', 'pickup_time', 'end_date', 'return_time', 'total_days', 'total_price', 'pickup_location', 'pickup_lat', 'pickup_lng', 'dropoff_location', 'dropoff_lat', 'dropoff_lng', 'status', 'payment_status', 'payment_proof', 'delivery_proof', 'notes'])]
 class Booking extends Model
 {
     use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'user_id',
+        'car_id',
+        'driver_id',
+        'start_date',
+        'pickup_time',
+        'end_date',
+        'return_time',
+        'total_days',
+        'total_price',
+        'pickup_location',
+        'pickup_lat',
+        'pickup_lng',
+        'dropoff_location',
+        'dropoff_lat',
+        'dropoff_lng',
+        'status',
+        'payment_status',
+        'payment_proof',
+        'delivery_proof',
+        'notes',
+    ];
 
     /**
      * Get the attributes that should be cast.

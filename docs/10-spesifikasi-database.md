@@ -14,7 +14,7 @@ panjang, null, dan keterangan.
 | Storage Engine | InnoDB (mendukung foreign key) |
 | Character Set | `utf8mb4` |
 | Collation | `utf8mb4_unicode_ci` |
-| Jumlah Tabel Domain | 5 (`users`, `cars`, `drivers`, `bookings`, `reviews`) |
+| Jumlah Tabel Domain | 4 (`users`, `cars`, `drivers`, `bookings`) |
 | Pola Primary Key | Surrogate key `id` `BIGINT UNSIGNED AUTO_INCREMENT` |
 | Timestamps | `created_at`, `updated_at` (nullable) di semua tabel |
 
@@ -68,9 +68,11 @@ panjang, null, dan keterangan.
 | 10 | image | varchar | 255 | Ya | NULL | | Foto utama |
 | 11 | gallery | text | — | Ya | NULL | | JSON array path foto (cast array) |
 | 12 | seats | int | — | Tidak | — | | Jumlah kursi |
-| 13 | description | text | — | Ya | NULL | | Deskripsi |
-| 14 | created_at | timestamp | — | Ya | NULL | | Waktu dibuat |
-| 15 | updated_at | timestamp | — | Ya | NULL | | Waktu diperbarui |
+| 13 | transmission | enum | Manual/Automatic/CVT | Ya | NULL | | Jenis transmisi |
+| 14 | fuel | enum | Bensin/Diesel/Hybrid/Listrik | Ya | NULL | | Bahan bakar |
+| 15 | description | text | — | Ya | NULL | | Deskripsi |
+| 16 | created_at | timestamp | — | Ya | NULL | | Waktu dibuat |
+| 17 | updated_at | timestamp | — | Ya | NULL | | Waktu diperbarui |
 
 ---
 
@@ -95,52 +97,58 @@ panjang, null, dan keterangan.
 ## 4. Tabel `bookings`
 
 - **Primary Key:** `id`
-- **Foreign Key:** `user_id` → `users.id` (CASCADE), `car_id` → `cars.id` (CASCADE), `driver_id` → `users.id` (SET NULL)
-- **Fungsi:** transaksi penyewaan mobil.
+- **Unique:** `order_id`
+- **Foreign Key:** `user_id` → `users.id` (**RESTRICT**), `car_id` → `cars.id` (**RESTRICT**), `driver_id` → `users.id` (SET NULL)
+- **Fungsi:** transaksi penyewaan mobil sekaligus data pembayaran (Midtrans / transfer manual).
 
 | No | Field | Tipe | Panjang | Null | Default | Key | Keterangan |
 |----|-------|------|---------|------|---------|-----|------------|
 | 1 | id | bigint unsigned | — | Tidak | auto | PK | Identitas booking |
-| 2 | user_id | bigint unsigned | — | Tidak | — | FK | Pemesan → `users.id` (cascade) |
-| 3 | car_id | bigint unsigned | — | Tidak | — | FK | Mobil → `cars.id` (cascade) |
-| 4 | driver_id | bigint unsigned | — | Ya | NULL | FK | Driver → `users.id` (set null) |
-| 5 | start_date | date | — | Tidak | — | | Tanggal mulai sewa |
-| 6 | pickup_time | time | — | Ya | NULL | | Jam penjemputan |
-| 7 | end_date | date | — | Tidak | — | | Tanggal selesai sewa |
-| 8 | return_time | time | — | Ya | NULL | | Jam pengembalian |
-| 9 | total_days | int | — | Tidak | — | | Total hari (ceil jam/24, min 1) |
-| 10 | total_price | decimal | 10,2 | Tidak | — | | total_days × price_per_day |
-| 11 | pickup_location | varchar | 255 | Tidak | — | | Lokasi penjemputan |
-| 12 | pickup_lat | decimal | 10,7 | Ya | NULL | | Koordinat lat penjemputan |
-| 13 | pickup_lng | decimal | 10,7 | Ya | NULL | | Koordinat lng penjemputan |
-| 14 | dropoff_location | varchar | 255 | Tidak | — | | Lokasi pengantaran |
-| 15 | dropoff_lat | decimal | 10,7 | Ya | NULL | | Koordinat lat pengantaran |
-| 16 | dropoff_lng | decimal | 10,7 | Ya | NULL | | Koordinat lng pengantaran |
-| 17 | status | enum | pending/confirmed/ongoing/completed/cancelled | Tidak | pending | | Status booking |
-| 18 | payment_status | enum | unpaid/paid | Tidak | unpaid | | Status pembayaran |
-| 19 | payment_proof | varchar | 255 | Ya | NULL | | Path bukti pembayaran |
-| 20 | delivery_proof | varchar | 255 | Ya | NULL | | Path bukti pengantaran (driver) |
-| 21 | notes | text | — | Ya | NULL | | Catatan |
-| 22 | created_at | timestamp | — | Ya | NULL | | Waktu dibuat |
-| 23 | updated_at | timestamp | — | Ya | NULL | | Waktu diperbarui |
+| 2 | order_id | varchar | 255 | Ya | NULL | UQ | Order id Midtrans (`BOOKING-{id}-{ts}-{rand}`) |
+| 3 | snap_token | varchar | 255 | Ya | NULL | | Token Snap Midtrans |
+| 4 | user_id | bigint unsigned | — | Tidak | — | FK | Pemesan → `users.id` (restrict) |
+| 5 | car_id | bigint unsigned | — | Tidak | — | FK | Mobil → `cars.id` (restrict) |
+| 6 | driver_id | bigint unsigned | — | Ya | NULL | FK | Driver → `users.id` (set null) |
+| 7 | start_date | date | — | Tidak | — | | Tanggal mulai sewa |
+| 8 | pickup_time | time | — | Ya | NULL | | Jam penjemputan |
+| 9 | end_date | date | — | Tidak | — | | Tanggal selesai sewa |
+| 10 | return_time | time | — | Ya | NULL | | Jam pengembalian |
+| 11 | total_days | int | — | Tidak | — | | Total hari (ceil jam/24, min 1) |
+| 12 | total_price | decimal | 10,2 | Tidak | — | | total_days × price_per_day |
+| 13 | pickup_location | varchar | 255 | Tidak | — | | Lokasi penjemputan |
+| 14 | pickup_lat | decimal | 10,7 | Ya | NULL | | Koordinat lat penjemputan |
+| 15 | pickup_lng | decimal | 10,7 | Ya | NULL | | Koordinat lng penjemputan |
+| 16 | dropoff_location | varchar | 255 | Tidak | — | | Lokasi pengantaran |
+| 17 | dropoff_lat | decimal | 10,7 | Ya | NULL | | Koordinat lat pengantaran |
+| 18 | dropoff_lng | decimal | 10,7 | Ya | NULL | | Koordinat lng pengantaran |
+| 19 | status | enum | pending/confirmed/ongoing/completed/cancelled | Tidak | pending | | Status booking |
+| 20 | payment_status | enum | unpaid/paid | Tidak | unpaid | | Status pembayaran |
+| 21 | payment_proof | varchar | 255 | Ya | NULL | | Path bukti transfer manual |
+| 22 | delivery_proof | varchar | 255 | Ya | NULL | | Path bukti pengantaran (driver) |
+| 23 | payment_type | varchar | 255 | Ya | NULL | | Tipe pembayaran Midtrans (bank_transfer, gopay, qris) |
+| 24 | payment_channel | varchar | 255 | Ya | NULL | | Channel pembayaran (bca, bni, gopay, qris) |
+| 25 | transaction_status | varchar | 255 | Ya | NULL | | Status transaksi dari Midtrans |
+| 26 | transaction_time | timestamp | — | Ya | NULL | | Waktu transaksi dibuat di Midtrans |
+| 27 | settlement_time | timestamp | — | Ya | NULL | | Waktu settlement (pembayaran selesai) |
+| 28 | gross_amount | decimal | 10,2 | Ya | NULL | | Gross amount diterima Midtrans (rekonsiliasi) |
+| 29 | midtrans_response | json | — | Ya | NULL | | Raw JSON callback Midtrans (audit trail) |
+| 30 | notes | text | — | Ya | NULL | | Catatan |
+| 31 | created_at | timestamp | — | Ya | NULL | | Waktu dibuat |
+| 32 | updated_at | timestamp | — | Ya | NULL | | Waktu diperbarui |
 
----
+### Index `bookings`
 
-## 5. Tabel `reviews`
+| Nama | Kolom | Tujuan |
+|------|-------|--------|
+| `bookings_car_status_index` | `car_id`, `status` | Cek slot mobil per status |
+| `bookings_driver_status_index` | `driver_id`, `status` | Cek slot driver per status |
+| `bookings_status_index` | `status` | Filter daftar booking |
+| `bookings_payment_status_index` | `payment_status` | Filter status pembayaran |
+| `bookings_car_dates_index` | `car_id`, `start_date`, `end_date` | Pengecekan overlap mobil |
+| `bookings_driver_dates_index` | `driver_id`, `start_date`, `end_date` | Pengecekan overlap driver |
+| `bookings_created_at_index` | `created_at` | Filter TTL pembayaran |
 
-- **Primary Key:** `id`
-- **Foreign Key:** `booking_id` → `bookings.id` (CASCADE), `user_id` → `users.id` (CASCADE)
-- **Fungsi:** ulasan & rating customer terhadap booking.
-
-| No | Field | Tipe | Panjang | Null | Default | Key | Keterangan |
-|----|-------|------|---------|------|---------|-----|------------|
-| 1 | id | bigint unsigned | — | Tidak | auto | PK | Identitas review |
-| 2 | booking_id | bigint unsigned | — | Tidak | — | FK | → `bookings.id` (cascade) |
-| 3 | user_id | bigint unsigned | — | Tidak | — | FK | → `users.id` (cascade) |
-| 4 | rating | int unsigned | — | Tidak | — | | Nilai rating |
-| 5 | comment | text | — | Ya | NULL | | Komentar |
-| 6 | created_at | timestamp | — | Ya | NULL | | Waktu dibuat |
-| 7 | updated_at | timestamp | — | Ya | NULL | | Waktu diperbarui |
+> Tabel `reviews` sudah **dihapus** dari skema (migration `2026_06_21_140000`).
 
 ---
 

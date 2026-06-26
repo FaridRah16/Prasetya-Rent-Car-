@@ -98,17 +98,51 @@ flowchart TD
     Q --> Z
 ```
 
-## 4. Pembayaran & Verifikasi
+## 4. Pembayaran Online (Midtrans Snap)
+
+```mermaid
+flowchart TD
+    A([Mulai]) --> B[Buka halaman pembayaran<br/>GET .../payment]
+    B --> C{Status booking pending<br/>& belum dibayar?}
+    C -->|Tidak / sudah paid| C1[Redirect ke detail booking]
+    C1 --> Z([Selesai])
+    C -->|Ya| D{Batas waktu bayar habis?<br/>isPaymentExpired}
+    D -->|Ya| D1[status=cancelled<br/>tampilkan pesan kedaluwarsa]
+    D1 --> Z
+    D -->|Tidak| E[MidtransService::createSnapToken<br/>buat order_id baru + snap_token]
+    E --> F[Tampilkan halaman Snap<br/>redirect ke vtweb snapUrl]
+    F --> G[Customer pilih metode & bayar<br/>VA/GoPay/QRIS/dll]
+    G --> H{Hasil pembayaran}
+    H -->|finish| I[Callback finish]
+    H -->|unfinish| I
+    H -->|error| I
+    I --> J[syncStatusFromMidtrans:<br/>cek status ke Midtrans API]
+    J --> K{transaction_status?}
+    K -->|settlement / capture+accept| L[payment_status=paid<br/>status=confirmed]
+    K -->|pending| M[tetap pending<br/>tampilkan 'masih diproses']
+    K -->|expire / cancel / deny| N[status=cancelled / pending<br/>tampilkan gagal]
+    L --> O[Booking terkonfirmasi]
+    O --> Z
+    M --> P[Customer klik 'Cek Status'<br/>POST .../check-status]
+    P --> J
+    N --> Z
+```
+
+> Selain callback browser di atas, **webhook** `POST /api/payment/notification` dari
+> Midtrans (server-to-server) memanggil `MidtransService::handleNotification()` untuk
+> memperbarui status secara independen — lihat [Sequence Diagram](06-sequence-diagram.md).
+
+## 4b. Pembayaran Manual & Verifikasi Admin (alternatif)
 
 ```mermaid
 flowchart TD
     subgraph Customer
         A([Mulai]) --> B[Buka detail booking pending]
-        B --> C[Upload bukti pembayaran<br/>jpeg/png/jpg max 2MB]
+        B --> C[Upload bukti transfer<br/>jpeg/png/jpg max 2MB]
         C --> D{Validasi file?}
         D -->|Gagal| C
         D -->|Lolos| E[Hapus bukti lama jika ada]
-        E --> F[Simpan file ke storage/payments]
+        E --> F[Simpan file ke disk privat]
         F --> G[Update payment_proof]
         G --> H[Status: menunggu verifikasi admin]
     end
@@ -126,6 +160,24 @@ flowchart TD
     N --> Z([Selesai])
     L --> I
 ```
+
+## 4c. Auto-Batal Booking Kedaluwarsa (Sistem)
+
+```mermaid
+flowchart TD
+    A([Scheduler tiap menit]) --> B[Command bookings:expire-pending]
+    B --> C[cutoff = now - payment_window_minutes]
+    C --> D[Cari booking status=pending<br/>payment_status=unpaid<br/>created_at < cutoff]
+    D --> E{Ada yang cocok?}
+    E -->|Ya| F[Update status=cancelled]
+    E -->|Tidak| G[Tidak ada perubahan]
+    F --> H[Slot mobil/driver bebas kembali]
+    H --> Z([Selesai])
+    G --> Z
+```
+
+> Selain command terjadwal, mekanisme **lazy-expire** membatalkan booking saat halaman
+> pembayaran dibuka kembali setelah lewat batas waktu (`PaymentController@show`).
 
 ## 5. Pelaksanaan Tugas (Driver)
 

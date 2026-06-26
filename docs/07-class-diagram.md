@@ -1,8 +1,8 @@
 # Class Diagram
 
 Class diagram menampilkan struktur kelas aplikasi: **Model Eloquent** (beserta atribut,
-relasi, dan method bisnis) serta **Controller**. Atribut dan method diambil 100% sesuai
-kode pada `app/Models` dan `app/Http/Controllers`.
+relasi, dan method bisnis), **Controller**, dan **Service**. Atribut dan method diambil
+100% sesuai kode pada `app/Models`, `app/Http/Controllers`, dan `app/Services`.
 
 ## 1. Model (Domain)
 
@@ -22,7 +22,6 @@ classDiagram
         +datetime verified_at
         +bookings() HasMany
         +driver() HasOne
-        +reviews() HasMany
         +bookingsAsDriver() HasMany
         +isAdmin() bool
         +isCustomer() bool
@@ -45,8 +44,11 @@ classDiagram
         +string image
         +array gallery
         +int seats
+        +string transmission
+        +string fuel
         +string description
         +bookings() HasMany
+        +activeBooking() HasOne
         +isAvailable() bool
         +isRented() bool
         +isMaintenance() bool
@@ -69,6 +71,8 @@ classDiagram
 
     class Booking {
         +int id
+        +string order_id
+        +string snap_token
         +int user_id
         +int car_id
         +int driver_id
@@ -88,11 +92,17 @@ classDiagram
         +string payment_status
         +string payment_proof
         +string delivery_proof
+        +string payment_type
+        +string payment_channel
+        +string transaction_status
+        +datetime transaction_time
+        +datetime settlement_time
+        +decimal gross_amount
+        +json midtrans_response
         +string notes
         +user() BelongsTo
         +car() BelongsTo
         +driver() BelongsTo
-        +review() HasOne
         +isPending() bool
         +isConfirmed() bool
         +isOngoing() bool
@@ -103,27 +113,20 @@ classDiagram
         +scopePending(query)
         +scopeConfirmed(query)
         +scopeOngoing(query)
+        +scopeBlockingSlot(query)
+        +paymentDeadline() Carbon
+        +isPaymentExpired() bool
         +getPaymentProofUrlAttribute() string
-    }
-
-    class Review {
-        +int id
-        +int booking_id
-        +int user_id
-        +int rating
-        +string comment
-        +booking() BelongsTo
-        +user() BelongsTo
     }
 
     User "1" --> "0..*" Booking : user_id
     User "1" --> "0..1" Driver : user_id
-    User "1" --> "0..*" Review : user_id
     User "1" --> "0..*" Booking : driver_id
     Car "1" --> "0..*" Booking : car_id
-    Booking "1" --> "0..1" Review : booking_id
     Driver "*" --> "1" User : belongsTo
 ```
+
+> Fitur **Review** sudah dihapus — class `Review` beserta relasinya tidak lagi ada.
 
 ## 2. Controller
 
@@ -139,11 +142,21 @@ classDiagram
         +showRegisterForm()
         +register(Request)
         +logout(Request)
+        +showForgotPasswordForm()
+        +sendResetLink(Request)
+        +showResetForm(token)
+        +resetPassword(Request)
     }
 
     class PublicCarController {
         +index(Request)
         +show(id)
+    }
+
+    class SecureFileController {
+        +sim(id) StreamedResponse
+        +payment(id) StreamedResponse
+        +delivery(id) StreamedResponse
     }
 
     class AdminDashboardController {
@@ -193,6 +206,14 @@ classDiagram
         +uploadPayment(Request, id)
         +cancel(id)
     }
+    class CustomerPaymentController {
+        +show(bookingId)
+        +regenerateToken(bookingId)
+        +finish(Request, bookingId)
+        +unfinish(Request, bookingId)
+        +error(Request, bookingId)
+        +checkStatus(bookingId)
+    }
     class CustomerProfileController {
         +edit()
         +update(Request)
@@ -200,6 +221,10 @@ classDiagram
         +updatePassword(Request)
         +deleteAvatar()
         +submitVerification(Request)
+    }
+
+    class PaymentNotificationController {
+        +handle(Request)
     }
 
     class DriverDashboardController {
@@ -215,6 +240,7 @@ classDiagram
 
     Controller <|-- AuthController
     Controller <|-- PublicCarController
+    Controller <|-- SecureFileController
     Controller <|-- AdminDashboardController
     Controller <|-- AdminCarController
     Controller <|-- AdminBookingController
@@ -222,55 +248,65 @@ classDiagram
     Controller <|-- AdminReportController
     Controller <|-- CustomerDashboardController
     Controller <|-- CustomerBookingController
+    Controller <|-- CustomerPaymentController
     Controller <|-- CustomerProfileController
+    Controller <|-- PaymentNotificationController
     Controller <|-- DriverDashboardController
     Controller <|-- DriverTaskController
 ```
 
-## 3. Middleware & Ketergantungan Controller–Model
+## 3. Service, Command & Ketergantungan
 
 ```mermaid
 classDiagram
+    class MidtransService {
+        <<service>>
+        +configure()$ void
+        +createSnapToken(Booking)$ string
+        +handleNotification(notification)$ array
+        +verifySignature(orderId, statusCode, grossAmount, serverKey)$ string
+    }
+
+    class ExpirePendingBookings {
+        <<command>>
+        +signature = "bookings:expire-pending"
+        +handle() int
+    }
+
     class RoleMiddleware {
         +handle(Request, Closure, string role) Response
     }
 
+    class CustomerPaymentController
+    class PaymentNotificationController
     class CustomerBookingController
-    class CustomerProfileController
     class AdminBookingController
-    class AdminUserController
-    class DriverTaskController
     class Booking
-    class Car
-    class Driver
-    class User
 
+    CustomerPaymentController ..> MidtransService : createSnapToken / status
+    PaymentNotificationController ..> MidtransService : handleNotification / verifySignature
+    MidtransService ..> Booking : update status & data Midtrans
+    ExpirePendingBookings ..> Booking : batalkan pending kedaluwarsa
     RoleMiddleware ..> User : cek role
     CustomerBookingController ..> User : cek isVerified() sebelum booking
-    CustomerBookingController ..> Booking : create/update
-    CustomerBookingController ..> Car : lock & cek status
-    CustomerBookingController ..> Driver : cek ketersediaan
-    CustomerProfileController ..> User : submit SIM & set status pending
-    AdminBookingController ..> Booking : updateStatus/verify
-    AdminBookingController ..> Car : ubah status
-    AdminBookingController ..> Driver : assign/release
-    AdminUserController ..> User : verifyUser/rejectVerification
-    DriverTaskController ..> Booking : start/complete
-    DriverTaskController ..> Car : set rented
-    DriverTaskController ..> Driver : set on_duty
+    CustomerBookingController ..> Booking : create (scopeBlockingSlot)
+    AdminBookingController ..> Booking : updateStatus / verifyPayment
 ```
 
 ## Catatan Desain
 
-- Semua model menggunakan atribut PHP `#[Fillable([...])]` (fitur Laravel 13) sebagai
-  pengganti properti `$fillable`.
-- `User` meng-extend `Authenticatable` dan menggunakan trait `HasFactory`, `Notifiable`.
-- `Car.gallery` dan `Booking` tanggal/harga menggunakan **cast** (`array`, `date`, `decimal:2`).
-- Otorisasi peran disentralisasi pada `RoleMiddleware` yang didaftarkan sebagai alias `role`.
-- Password otomatis di-hash melalui cast `hashed` pada model `User`.
-- **Verifikasi akun**: `User.verification_status` berstatus `unverified` → `pending` → `verified`.
-  Customer mengunggah foto SIM via `CustomerProfileController.submitVerification()` (status
-  menjadi `pending`), lalu admin menyetujui (`AdminUserController.verifyUser()`, set
-  `verified_at`) atau menolak (`AdminUserController.rejectVerification()`, hapus SIM &
-  kembali ke `unverified`). Customer **wajib** berstatus `verified` (`isVerified()`) sebelum
-  dapat membuat booking.
+- Aplikasi berjalan di atas **Laravel 12** (PHP 8.3).
+- Model menggunakan atribut PHP `#[Fillable([...])]` / properti `$fillable` untuk mass-assignment.
+  Pada `User`, field `role`, `verification_status`, dan `verified_at` **sengaja tidak**
+  mass-assignable (cegah privilege-escalation / self-verify).
+- `Car.gallery` (cast `array`), `Booking` tanggal/harga (`date`, `decimal:2`), dan
+  `Booking.midtrans_response` (JSON) menggunakan **cast**.
+- Otorisasi peran disentralisasi pada `RoleMiddleware` (alias `role`). Berkas PII
+  (SIM, bukti bayar/antar) disajikan ber-otorisasi lewat `SecureFileController` dari disk privat.
+- **Verifikasi akun**: `User.verification_status` `unverified` → `pending` → `verified`.
+  Customer **wajib** `verified` (`isVerified()`) sebelum dapat membuat booking.
+- **Pembayaran**: `MidtransService` membuat Snap token & memproses notifikasi/sinkronisasi.
+  `Booking.paymentDeadline()` / `isPaymentExpired()` menghitung batas waktu bayar;
+  `scopeBlockingSlot()` menentukan booking yang masih mengunci slot mobil/driver.
+- **Auto-expire**: command `bookings:expire-pending` (dijadwalkan tiap menit pada
+  `routes/console.php`) membatalkan booking pending yang melewati batas waktu pembayaran.

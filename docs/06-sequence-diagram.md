@@ -124,7 +124,7 @@ sequenceDiagram
     BC-->>B: redirect ke detail booking + pesan sukses
 ```
 
-## 4. Upload Bukti Bayar & Verifikasi Admin
+## 4. Upload Bukti Bayar Manual & Verifikasi Admin
 
 ```mermaid
 sequenceDiagram
@@ -155,6 +155,83 @@ sequenceDiagram
         ABC-->>A: 'Pembayaran diverifikasi & booking dikonfirmasi'
     end
 ```
+
+## 4b. Pembayaran Online via Midtrans Snap
+
+```mermaid
+sequenceDiagram
+    actor C as Customer
+    participant PC as Customer\PaymentController
+    participant MS as MidtransService
+    participant MT as Midtrans (Snap API)
+    participant Bk as Booking Model
+
+    C->>PC: GET /customer/bookings/{id}/payment
+    PC->>Bk: where user_id ->findOrFail(id)
+    alt status != pending / sudah paid
+        PC-->>C: redirect ke detail booking
+    else isPaymentExpired()
+        PC->>Bk: update(status=cancelled)
+        PC-->>C: 'Batas waktu pembayaran habis, dibatalkan'
+    else masih pending & valid
+        PC->>MS: createSnapToken(booking)
+        MS->>MS: configure() + set order_id baru (unik)
+        MS->>MT: Snap::getSnapToken(params + expiry)
+        MT-->>MS: snap_token
+        MS->>Bk: update(order_id, snap_token, gross_amount)
+        MS-->>PC: snap_token
+        PC-->>C: tampilkan halaman Snap (redirect vtweb)
+    end
+
+    C->>MT: Pilih metode & bayar (VA/GoPay/QRIS)
+    MT-->>C: redirect callback finish/unfinish/error
+    C->>PC: GET .../payment/finish
+    PC->>MS: syncStatusFromMidtrans(booking)
+    MS->>MT: Transaction::status(order_id)
+    MT-->>MS: transaction_status
+    MS->>MS: handleNotification(status)
+    MS->>Bk: update(payment_status, status, payment_type, dll)
+    PC->>Bk: refresh()
+    alt paid & confirmed
+        PC-->>C: '✅ Pembayaran berhasil, booking dikonfirmasi'
+    else masih pending
+        PC-->>C: '⏳ Masih diproses, klik Cek Status'
+    end
+```
+
+## 4c. Webhook Notifikasi Midtrans (Server-to-Server)
+
+```mermaid
+sequenceDiagram
+    participant MT as Midtrans
+    participant R as Route /api/payment/notification
+    participant NC as PaymentNotificationController
+    participant MS as MidtransService
+    participant Bk as Booking Model
+
+    MT->>R: POST /api/payment/notification (tanpa CSRF/auth)
+    R->>NC: handle(Request)
+    NC->>NC: isValidSignature() — SHA512(order_id+status_code+gross_amount+server_key)
+    alt signature tidak valid
+        NC-->>MT: 400 Invalid signature
+    else valid
+        NC->>MS: handleNotification(request->all())
+        MS->>Bk: where order_id ->first()
+        alt booking tidak ditemukan
+            MS-->>NC: success=false
+            NC-->>MT: 404 Booking not found
+        else ditemukan
+            MS->>Bk: simpan midtrans_response (audit)
+            MS->>MS: map transaction_status -> status internal
+            MS->>Bk: update(payment_status, status, payment_type, dll)
+            MS-->>NC: success=true
+            NC-->>MT: 200 OK
+        end
+    end
+```
+
+> Mapping status Midtrans → internal: `settlement`/`capture(accept)` → `paid`+`confirmed`;
+> `pending` → tetap `pending`; `expire`/`cancel`/`refund` → `cancelled`; `deny` → tetap `pending`.
 
 ## 5. Driver Mulai Tugas & Upload Bukti Pengantaran
 

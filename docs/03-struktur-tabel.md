@@ -39,8 +39,13 @@ nilai default, dan constraint diambil 100% sesuai definisi `Schema::create` /
 | image | varchar(255) | YA | NULL | Foto utama |
 | gallery | text | YA | NULL | JSON array (cast `array`) |
 | seats | int | TIDAK | — | Jumlah kursi |
+| transmission | enum | YA | NULL | `Manual` \| `Automatic` \| `CVT` |
+| fuel | enum | YA | NULL | `Bensin` \| `Diesel` \| `Hybrid` \| `Listrik` |
 | description | text | YA | NULL | Deskripsi |
 | created_at / updated_at | timestamp | YA | NULL | — |
+
+> `transmission` & `fuel` awalnya `string` bebas, diubah menjadi **enum** (migration
+> `2026_06_22_120200`) agar nilainya konsisten. Tetap nullable untuk menampung baris lama.
 
 ## Tabel `drivers`
 
@@ -57,8 +62,10 @@ nilai default, dan constraint diambil 100% sesuai definisi `Schema::create` /
 | Kolom | Tipe | Null | Default | Keterangan |
 |-------|------|------|---------|------------|
 | id | bigint UNSIGNED | TIDAK | auto | Primary Key |
-| user_id | bigint UNSIGNED | TIDAK | — | **FK** → `users.id` (cascade) — pemesan |
-| car_id | bigint UNSIGNED | TIDAK | — | **FK** → `cars.id` (cascade) |
+| order_id | varchar(255) | YA | NULL | **UNIQUE** — order id Midtrans (`BOOKING-{id}-{ts}-{rand}`) |
+| snap_token | varchar(255) | YA | NULL | Token Snap Midtrans |
+| user_id | bigint UNSIGNED | TIDAK | — | **FK** → `users.id` (**restrict**) — pemesan |
+| car_id | bigint UNSIGNED | TIDAK | — | **FK** → `cars.id` (**restrict**) |
 | driver_id | bigint UNSIGNED | YA | NULL | **FK** → `users.id` (set null) — driver |
 | start_date | date | TIDAK | — | Tanggal mulai sewa |
 | pickup_time | time | YA | NULL | Jam penjemputan |
@@ -74,21 +81,35 @@ nilai default, dan constraint diambil 100% sesuai definisi `Schema::create` /
 | dropoff_lng | decimal(10,7) | YA | NULL | Koordinat lng pengantaran |
 | status | enum | TIDAK | `pending` | `pending` \| `confirmed` \| `ongoing` \| `completed` \| `cancelled` |
 | payment_status | enum | TIDAK | `unpaid` | `unpaid` \| `paid` |
-| payment_proof | varchar(255) | YA | NULL | Bukti pembayaran |
+| payment_proof | varchar(255) | YA | NULL | Bukti transfer manual |
 | delivery_proof | varchar(255) | YA | NULL | Bukti pengantaran (oleh driver) |
+| payment_type | varchar(255) | YA | NULL | Tipe pembayaran Midtrans (bank_transfer, gopay, qris) |
+| payment_channel | varchar(255) | YA | NULL | Channel (bca, bni, gopay, qris) |
+| transaction_status | varchar(255) | YA | NULL | Status transaksi dari Midtrans |
+| transaction_time | timestamp | YA | NULL | Waktu transaksi di Midtrans |
+| settlement_time | timestamp | YA | NULL | Waktu settlement (pembayaran selesai) |
+| gross_amount | decimal(10,2) | YA | NULL | Gross amount diterima Midtrans (rekonsiliasi) |
+| midtrans_response | json | YA | NULL | Raw JSON callback Midtrans (audit) |
 | notes | text | YA | NULL | Catatan |
 | created_at / updated_at | timestamp | YA | NULL | — |
 
-## Tabel `reviews`
+### Index pada `bookings`
 
-| Kolom | Tipe | Null | Default | Keterangan |
-|-------|------|------|---------|------------|
-| id | bigint UNSIGNED | TIDAK | auto | Primary Key |
-| booking_id | bigint UNSIGNED | TIDAK | — | **FK** → `bookings.id` (cascade) |
-| user_id | bigint UNSIGNED | TIDAK | — | **FK** → `users.id` (cascade) |
-| rating | int UNSIGNED | TIDAK | — | Nilai rating |
-| comment | text | YA | NULL | Komentar |
-| created_at / updated_at | timestamp | YA | NULL | — |
+Untuk mempercepat pengecekan bentrok (overlap) & filter daftar booking
+(migration `2026_06_21_130000` & `2026_06_22_120100`):
+
+| Nama Index | Kolom |
+|------------|-------|
+| `bookings_car_status_index` | `car_id`, `status` |
+| `bookings_driver_status_index` | `driver_id`, `status` |
+| `bookings_status_index` | `status` |
+| `bookings_payment_status_index` | `payment_status` |
+| `bookings_car_dates_index` | `car_id`, `start_date`, `end_date` |
+| `bookings_driver_dates_index` | `driver_id`, `start_date`, `end_date` |
+| `bookings_created_at_index` | `created_at` |
+
+> Catatan: tabel `reviews` sudah **dihapus** dari skema (migration
+> `2026_06_21_140000_drop_reviews_table`).
 
 ## Tabel Pendukung Framework
 
@@ -108,8 +129,9 @@ stateDiagram-v2
     direction LR
     state "Booking.status" as B {
         [*] --> pending
-        pending --> confirmed : pembayaran diverifikasi admin
+        pending --> confirmed : pembayaran lunas (Midtrans settlement / admin verifikasi)
         pending --> cancelled : dibatalkan customer
+        pending --> cancelled : batas waktu pembayaran habis (auto-expire / Midtrans expire)
         confirmed --> ongoing : driver mulai tugas / admin set ongoing
         ongoing --> completed : admin menyelesaikan
         confirmed --> cancelled : admin batalkan
